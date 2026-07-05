@@ -1,0 +1,23 @@
+# ICM stage outputs are disposable scratch — structure kept via .gitkeep, contents ignored
+stages/*/output/*
+!stages/*/output/.gitkeep
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Playwright
+node_modules/
+playwright/.auth/
+playwright-report/
+test-results/
+blob-report/
+.cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

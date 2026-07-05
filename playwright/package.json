@@ -1,0 +1,17 @@
+{
+  "name": "icm-playwright",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright test project driven by the ICM framework. One shared setup; per-product buckets.",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep @regression",
+    "test:e2e": "playwright test --grep @e2e",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "typescript": "^5.6.0"
+  }
+}
