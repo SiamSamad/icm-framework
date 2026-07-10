@@ -41,7 +41,7 @@ the commands below to clean them up.
 **Rules that always apply:**
 - Before deleting anything, list the exact files that will be removed and wait for
   confirmation. Never delete silently.
-- Cleanup only ever touches `stages/*/output/` folders. **Never touch `playwright/`** — those
+- Cleanup only ever touches `stages/*/output/` folders. **Never touch `automation/playwright/`** — those
   files are permanent until explicitly extracted to their test repo.
 - In-flight tickets (not yet through Stage 05) are protected from "clean all" commands unless
   you explicitly say so.
@@ -79,7 +79,7 @@ the commands below to clean them up.
 A ticket's output files are considered "graduated" (safe to clean) when:
 - Stage 05 has completed for that ticket, AND
 - The generated tests have been confirmed pushed to their permanent location
-  (the `playwright/` folder or a separate test repo).
+  (the `automation/playwright/` folder or a separate test repo).
 
 Until both conditions are met, the ticket's outputs are treated as in-flight and protected
 from bulk cleanup commands.

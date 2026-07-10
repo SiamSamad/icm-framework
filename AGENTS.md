@@ -85,7 +85,7 @@ Copy `_config/EXAMPLE-PRODUCT.md` to `_config/<your-product>.md` and fill in the
 test accounts, known edge cases, and any product-specific rules. Every product config points
 at the shared selector standard in `_config/selectors.md` rather than duplicating it.
 
-The output folder buckets (`playwright/<product>/`) mirror your product configs.
+The output folder buckets (`automation/playwright/<product>/`) mirror your product configs.
 
 ---
 

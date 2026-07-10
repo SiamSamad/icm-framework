@@ -8,7 +8,7 @@ Copy `_config/EXAMPLE-PRODUCT.md` to `_config/<your-product>.md` and fill it in 
 test accounts, known edge cases, backend checks). Then create the matching output bucket:
 
 ```
-playwright/<your-product>/
+automation/playwright/<your-product>/
   pages/
   tests/{smoke,regression,e2e}/
 ```

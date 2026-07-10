@@ -50,7 +50,7 @@ A living checklist of what this framework does. Update the status as things land
 - ✅ Force incl. in-flight (requires exact phrasing)
 - ✅ List-before-delete rule
 - ✅ Graduation rule (safe only after Stage 05 + pushed to permanent home)
-- ✅ Never touches `playwright/`
+- ✅ Never touches `automation/playwright/`
 - ✅ In-flight protection from bulk commands
 
 ## Config & Rules
@@ -65,7 +65,7 @@ A living checklist of what this framework does. Update the status as things land
 - ✅ Model recommendations by ticket complexity
 
 ## Repo & Structure
-- ✅ `playwright/<product>/` buckets with `pages/` + `tests/{smoke,regression,e2e}/`
+- ✅ `automation/playwright/<product>/` buckets with `pages/` + `tests/{smoke,regression,e2e}/`
 - ✅ Shared root Playwright config using per-product "projects"
 - ✅ `.gitignore` excludes stage output; structure preserved via `.gitkeep`
 - ◐ Single-repo baseline (logic + tests together). A logic-repo / artifacts-repo split is optional at scale.

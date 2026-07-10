@@ -6,7 +6,7 @@
  */
 import { test as setup } from '@playwright/test';
 
-const authFile = 'playwright/.auth/example-product.json';
+const authFile = '.auth/example-product.json';
 
 setup('authenticate', async ({ page }) => {
   await page.goto('/login');

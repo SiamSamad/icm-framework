@@ -13,18 +13,18 @@ test cases it approved.
 
 Generate **two** artifacts per ticket, following `_config/selectors.md`:
 
-1. **Page Object(s)** → `playwright/<product>/pages/<PageName>Page.ts`
+1. **Page Object(s)** → `automation/playwright/<product>/pages/<PageName>Page.ts`
    - one class per page/component involved
    - a method for every interaction (navigate, click, fill, assert-visible)
    - **no test logic** in the page object — only page interactions
    - use the selectors confirmed in the Stage 02 testability report
 
-2. **Spec** → `playwright/<product>/tests/<suite>/<TICKET-ID>.spec.ts`
+2. **Spec** → `automation/playwright/<product>/tests/<suite>/<TICKET-ID>.spec.ts`
    - imports the page objects; never uses raw selectors directly
    - one test per approved case (`TC-01` …), tagged `@smoke` / `@regression` / `@e2e`
    - `test.fixme()` for any case still `BLOCKED`
 
-Route output by product: `<product>` tickets land under `playwright/<product>/`.
+Route output by product: `<product>` tickets land under `automation/playwright/<product>/`.
 
 ## Part B — Run (Fork B)
 

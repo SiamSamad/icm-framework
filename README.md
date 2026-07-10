@@ -56,11 +56,11 @@ app's regression run.
    Review the output, then continue stage by stage. You approve at Stage 03 and Stage 05.
 
 3. **Add your app.** Copy `_config/EXAMPLE-PRODUCT.md` → `_config/<your-product>.md`, and add
-   a matching `playwright/<your-product>/` bucket.
+   a matching `automation/playwright/<your-product>/` bucket.
 
 4. **(Optional) Install Playwright** to actually run generated tests:
    ```bash
-   cd playwright && npm install && npx playwright install
+   cd automation/playwright && npm install && npx playwright install
    ```
 
 ---
@@ -76,7 +76,7 @@ inputs/                    Drop requirements here (template + worked example)
 stages/                    01→05, each with a prompt.md contract and a gitignored output/
 _config/                   selectors.md (shared standard) + per-product configs
 extensions/                Opt-in bolt-ons (adding MCPs, rules, HTML output)
-playwright/                Test project: one shared config, per-product buckets
+automation/playwright/     Test project: one shared config, per-product buckets
 ```
 
 ## Extending

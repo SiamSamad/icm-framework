@@ -12,7 +12,7 @@
 - **Failed** → report exactly what failed and why, then **loop back to fix** (usually Stage
   04, sometimes Stage 02 if the case itself was wrong). Do not store a failing test.
 - **Passed** → present the gated disposition options and wait for the human:
-  1. **Store** the validated test in its permanent location (the `playwright/` folder here, or
+  1. **Store** the validated test in its permanent location (the `automation/playwright/` folder here, or
      a separate test repo).
   2. **Log** the run result.
   3. **Write back** to a test-management system, if one is wired up (see

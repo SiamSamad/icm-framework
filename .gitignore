@@ -9,7 +9,7 @@ stages/*/output/*
 
 # Playwright
 node_modules/
-playwright/.auth/
+automation/playwright/.auth/
 playwright-report/
 test-results/
 blob-report/
