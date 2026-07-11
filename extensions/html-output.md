@@ -23,7 +23,7 @@ reading markdown or code.
 4. **How it's generated** — a template the agent fills, or a tiny build script the agent runs?
    A template keeps it tool-agnostic (no build dependency); a script is more powerful.
 5. **Cleanup integration** — HTML reports are disposable output, so they should fall under the
-   same Cleanup rules in `CLAUDE.md` (list before delete, never touch `automation/playwright/`).
+   same Cleanup rules in `CLAUDE.md` (list before delete, never touch `playwright/`).
 
 ## Intended integration point
 

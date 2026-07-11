@@ -1,7 +1,7 @@
 # Config: EXAMPLE-PRODUCT
 
 Copy this file to `_config/<your-product>.md` and fill it in. One config per app/product.
-The `automation/playwright/<product>/` output bucket should match the name you use here.
+The `playwright/<product>/` output bucket should match the name you use here.
 
 ## Product description
 _One or two lines: what this app is and who uses it._

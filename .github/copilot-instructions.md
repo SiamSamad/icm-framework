@@ -10,4 +10,4 @@ Key conventions:
 - Follow the selector precedence in `_config/selectors.md`.
 - Never surface tool/plugin names in user-facing text (the "little-lift" principle).
 - Cleanup rules live in `CLAUDE.md` and apply identically here: list files before deleting,
-  never touch `automation/playwright/`.
+  never touch `playwright/`.
