@@ -1,100 +1,71 @@
 # ICM Framework
 
-A reusable, tool-agnostic starter for turning requirements into validated automated tests —
-with a human in the loop where it counts.
+**ICM (Interpretable Context Methodology)** is a five-stage pipeline that converts tickets into validated, promoted Playwright tests. Every stage produces a readable file a human can inspect before anything moves forward. Nothing becomes code without a QE sign-off. Nothing is promoted to the permanent test suite without a clean run.
 
-**ICM (Interpretable Context Methodology)** lays QA automation out as numbered stage folders
-instead of one opaque agent. Any AI coding tool — Claude Code, Gemini CLI, Cursor, Copilot —
-can drive it, because every stage is just a markdown contract and a folder. Nothing hidden,
-everything inspectable, judgment kept where you want it.
-
-This repo is the **clean baseline**: no product-, company-, or tool-specific wiring. Clone it,
-point an AI coding tool at it, and start building. Add live integrations and product configs
-as you need them.
+This repo is the clean, portable baseline: point it at any product by adding a `_config/<product>.md` and a `playwright/<product>/` bucket.
 
 ---
 
-## The pipeline
+## Why It's Built This Way
 
-```
-inputs/  →  01 Normalize  →  02 Test Cases  →  [03 Approve]  →  04 Generate & Run  →  [05 Disposition]
-             spec.md          cases +           HUMAN GATE       POM test + run        HUMAN GATE
-                              testability                                              store / loop back
-```
+Automation handles the typing. QE keeps the judgment.
 
-| Stage | Does | Gate |
-|-------|------|------|
-| 01 Normalize | requirement → clean spec (multi-source, graceful degradation) | — |
-| 02 Test Cases | spec → draft cases **+ testability report** (flags missing selectors, recommends `data-testid`) | — |
-| 03 Approve | present cases; approve or loop back | **human** |
-| 04 Generate & Run | generate Page-Object test, run it (or hold/shift-left), self-report | optional |
-| 05 Disposition | pass → store (gated) + dedup; fail → report + loop back | **human** |
-
-The validation run lives *inside* Stage 04 — "is this test any good?" is separate from your
-app's regression run.
+Every intermediate result — the normalized spec, the test cases, the run report — lives in a numbered folder on disk. You can open it in any text editor, edit it, and continue. No black boxes, no one-shot generation, no opaque AI decisions. If something looks wrong at Stage 02, you fix it before any code is written. If tests fail at Stage 04, nothing is promoted until they pass.
 
 ---
 
-## Quickstart
+## The Pipeline
 
-1. **Get it locally** and push to your own repo:
-   ```bash
-   # after downloading/unzipping, from inside the folder:
-   git init
-   git add -A
-   git commit -m "chore: initial ICM baseline"
-   git branch -M main
-   git remote add origin <your-empty-repo-url>
-   git push -u origin main
-   ```
-   Create the remote repo empty (no README/.gitignore/license) so nothing conflicts.
+### Stage 01 — Normalize
 
-2. **Run a ticket.** Open the folder in your AI coding tool and say:
-   ```
-   Run Stage 01 for inputs/EXAMPLE-TICKET.md
-   ```
-   Review the output, then continue stage by stage. You approve at Stage 03 and Stage 05.
+Claude fetches the ticket (via a tracker integration if connected, else a local file or pasted content) and reads any linked requirements docs, code changes, or design files. From those sources it produces one clean spec: acceptance criteria, regression risks, gaps where the ticket was unclear, and a record of what was and wasn't readable. The output is a YAML spec and an HTML report, both in `stages/01-normalize/output/<TICKET-ID>/`.
 
-3. **Add your app.** Copy `_config/EXAMPLE-PRODUCT.md` → `_config/<your-product>.md`, and add
-   a matching `automation/playwright/<your-product>/` bucket.
+### Stage 02 — Test Cases
 
-4. **(Optional) Install Playwright** to actually run generated tests:
-   ```bash
-   cd automation/playwright && npm install && npx playwright install
-   ```
+The spec expands into a numbered list of test cases — one per acceptance criterion, plus negative paths, edge cases, and regression guards. A testability report classifies every UI element the tests will need: confirmed selector, missing `data-testid` (with a recommendation), or unverifiable until the code diff is available. When selectors are missing, a dev-feedback document is generated to share with the developer. Output: `stages/02-test-cases/output/<TICKET-ID>/`.
+
+### Stage 03 — Human Approval
+
+**Claude stops here.** A reviewer reads the test cases, edits if needed, and gives an explicit written approval. Claude writes the approval file only on a clear instruction — silence and ambiguity do not count. The pipeline waits at this stage until `Proceed to Stage 04: YES` is on disk. This is the first deliberate human decision point in the pipeline.
+
+### Stage 04 — Generate and Run
+
+Claude writes the Playwright test files (page objects and a test spec) and immediately runs them in the local scratch runner. The report is failure-first: each failing test gets the step it broke on, the error message, and a screenshot. A rollup at the bottom groups failures by cause — missing selectors, assertion mismatches, timeouts — so a developer can act on all of them at once. The ticket can only advance when the latest run is fully green. Tests are parked in `playwright/<product>/` temporarily; this folder is scratch, not the permanent home.
+
+### Stage 05 — Promote and Close
+
+Green tickets only. Claude audits the promotion target (an external test repo, or this repo’s integration branch in same-repo mode): checks whether page objects already exist and can be reused or extended, and scans for tests that cover the same ground. If no conflicts are found, it creates a branch, copies the validated files, commits, and opens a merge request targeting `develop`. Then it asks two separate questions before closing out: update the test-management system? post a summary comment to the ticket? Neither happens without an explicit yes. This is the second deliberate human decision point.
 
 ---
 
-## Layout
+## Where Things Live
 
-```
-AGENTS.md                  Operating manual — read this first (all tools obey it)
-CLAUDE.md                  Claude behavior + Cleanup rules
-GEMINI.md                  Gemini pointer → AGENTS.md
-.github/copilot-instructions.md   Copilot pointer → AGENTS.md
-inputs/                    Drop requirements here (template + worked example)
-stages/                    01→05, each with a prompt.md contract and a gitignored output/
-_config/                   selectors.md (shared standard) + per-product configs
-extensions/                Opt-in bolt-ons (adding MCPs, rules, HTML output)
-automation/playwright/     Test project: one shared config, per-product buckets
-```
-
-## Extending
-
-Everything optional lives in `extensions/`:
-- **`adding-mcps.md`** — wire live tool integrations into intake / run / write-back.
-- **`adding-rules.md`** — add products, standing rules, selector overrides.
-- **`html-output.md`** — planned HTML run reports (design + integration point).
-
-## Why folders instead of one agent
-
-- **Portable** — markdown + folders, not bound to any AI tool or vendor.
-- **Auditable** — every stage is discrete, inspectable, and re-runnable in isolation.
-- **Gated by design** — fast when you want it, with human judgment at the decision points.
-
-The long game is more autonomy — added incrementally, with the gates staying until you choose
-to lift them.
+| Location | What's there |
+|----------|-------------|
+| `stages/<NN>-*/output/<TICKET-ID>/` | Per-ticket stage output — specs, test cases, reports, approvals |
+| `playwright/<product>/` | **Temporary scratch** — parked tests, unproven until Stage 04 passes |
+| Promotion target | Permanent home for validated tests — an external test repo, or this repo’s integration branch (same-repo mode) |
+| `_config/<product>.md` | Per-product settings: base URLs, test accounts, selector conventions |
+| `CLAUDE.md` | Operational runbook — exact filenames, pipeline rules, cleanup commands |
+| `AGENTS.md` | Model selection guide — which Claude model to use for which ticket type |
 
 ---
 
-Methodology roots: Jake Van Clief's ICM approach.
+## Key Rules at a Glance
+
+- **Never skip Stage 03.** No test file is generated without a written human approval.
+- **All tests must pass before promotion.** Stage 05 refuses to run if Stage 04's latest report shows any failures — fix and re-run first.
+- **Product comes from the spec, not the ticket ID.** A ticket’s ID prefix does not reliably indicate its product. The `product` field set in Stage 01 is the authority for all five stages.
+- **Cleanup asks scope first.** When asked to clean up a ticket, Claude asks: stage outputs only, Playwright scratch only, or both. Page objects shared with another ticket's parked tests are kept and named explicitly.
+
+For the full rules and operational detail, see `CLAUDE.md`.
+
+---
+
+## Status
+
+All five stage contracts are complete. This baseline hasn’t run a real ticket end-to-end yet — wire up a product config and run one to prove it in your environment. **TMS write-back is a stub** — Claude will ask, but the write step returns "not implemented yet" until an integration is wired (see `extensions/adding-mcps.md`). Ticket-comment posting works when a tracker integration is connected; otherwise Claude prints the comment text to paste manually. Design context is available when design links are present in the ticket and an integration can read them.
+
+---
+
+*ICM (Interpretable Context Methodology) is based on a methodology concept by Jake Van Clief. This QA implementation — the five-stage pipeline, testability analysis, validation gates, and promotion flow — was designed and built by Siam Samad.*
