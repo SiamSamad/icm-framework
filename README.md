@@ -57,6 +57,7 @@ Green tickets only. Claude audits the promotion target (an external test repo, o
 - **All tests must pass before promotion.** Stage 05 refuses to run if Stage 04's latest report shows any failures — fix and re-run first.
 - **Product comes from the spec, not the ticket ID.** A ticket’s ID prefix does not reliably indicate its product. The `product` field set in Stage 01 is the authority for all five stages.
 - **Cleanup asks scope first.** When asked to clean up a ticket, Claude asks: stage outputs only, Playwright scratch only, or both. Page objects shared with another ticket's parked tests are kept and named explicitly.
+- **Branch model.** Feature branches cut from develop, merged into develop via PR. main only receives merges from develop. Both branches are protected — no direct pushes.
 
 For the full rules and operational detail, see `CLAUDE.md`.
 
