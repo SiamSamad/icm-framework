@@ -29,7 +29,7 @@ from `AGENTS.md`.)
 
 1. Connect the integration in whatever AI tool you're using to drive ICM (Claude Code, Gemini
    CLI, Cursor, etc.). That's a tool-level setting, not an ICM file.
-2. In the relevant stage's `prompt.md`, add an *internal* instruction describing what to fetch
+2. In the relevant stage's `CONTEXT.md`, add an *internal* instruction describing what to fetch
    and from where — phrased as a capability ("read the linked requirements doc"), not a tool
    name.
 3. Keep **graceful degradation**: if the integration is unavailable, the stage must still run

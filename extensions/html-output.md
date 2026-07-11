@@ -1,7 +1,8 @@
-# Extension: HTML run reports  (PLANNED — design in progress)
+# Extension: HTML run reports  (SHIPPED)
 
-**Status:** extension point reserved. Not yet built. This file marks where the feature lands
-and captures the design so it can be built cleanly (here first, then ported to other repos).
+**Status:** SHIPPED for all five stages. HTML reports are now defined directly in each stage's
+`CONTEXT.md` plus the shared `_config/report-style.md`. **Remaining scope: none.** This file is
+kept for history — it captures the original design questions that led to the shipped reports.
 
 ## Goal
 
@@ -26,7 +27,7 @@ reading markdown or code.
 
 ## Intended integration point
 
-A new instruction near the end of each stage's `prompt.md` (or a standing rule in `CLAUDE.md`)
+A new instruction near the end of each stage's `CONTEXT.md` (or a standing rule in `CLAUDE.md`)
 that says: after writing the stage's markdown output, also render the corresponding HTML
 report to the agreed location.
 

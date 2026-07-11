@@ -36,7 +36,7 @@ consistency.
 
 ## Rule of thumb
 
-- Applies to one stage → edit that stage's `prompt.md`.
+- Applies to one stage → edit that stage's `CONTEXT.md`.
 - Applies across the pipeline → `CLAUDE.md`.
 - Applies to one product → `_config/<product>.md`.
 - Applies to all products → `_config/selectors.md` or `AGENTS.md`.

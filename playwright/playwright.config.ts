@@ -35,3 +35,18 @@ export default defineConfig({
     // },
   ],
 });
+
+/**
+ * TROUBLESHOOTING — corporate networks / VPN:
+ * If tests fail immediately with navigation or connection timeouts (especially the
+ * auth/setup step, before any real test runs), the environment may be unreachable
+ * from the test browser rather than the tests being broken:
+ *  - On VPN-gated environments, Chromium may need explicit local-network access.
+ *    Known fix pattern: grant it on the browser context, e.g.
+ *      await context.grantPermissions(['local-network-access']);
+ *    (add in the auth/setup fixture or a global setup, not per-test)
+ *  - Also check: VPN connected, proxy env vars, and that the baseURL resolves
+ *    from this machine (try curl/ping first).
+ * Per Stage 04's environment check: a setup-step timeout means "environment
+ * unreachable — check VPN", NOT test failures. Do not mark tests failed for this.
+ */
