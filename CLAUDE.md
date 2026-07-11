@@ -210,6 +210,16 @@ stages/<NN-stage-name>/output/<TICKET-ID>/
 
 ---
 
+## Branch Model
+
+- **`main` = stable; `develop` = integration.**
+- **Feature branches are cut from `develop` and merge into `develop` only.**
+- **NEVER merge a feature branch directly into `main`.** `main` only ever receives merges from `develop`.
+- **Stage 05 promotions (same-repo mode) target `develop`**, per `stages/05-results/CONTEXT.md`.
+- **If the user ever instructs a direct feature→`main` merge, stop and remind them of this rule first.** Proceed only if they explicitly confirm after the reminder.
+
+---
+
 ## Cleanup
 
 ICM generates working output files in `stages/*/output/` as tickets flow through the pipeline. These are disposable scratch files — not the permanent home for any artifact. Use the commands below to clean them up.
