@@ -343,8 +343,8 @@ If NO elements are missing selectors — skip generating the file and show: "✅
 ## VERIFY
 
 Read `sources_read.code_diff.status` from the Stage 01 spec before running testability analysis:
-- `status: read` → elements with no stable selector found are **confirmed missing** — flag them and generate `dev-feedback.md`.
-- `status: not_found` or `unavailable` → elements are **testability unverified** — do not flag as missing; no `dev-feedback.md`.
+- `status: read` → elements with no stable selector found are **confirmed missing** — flag them and generate `dev-request.txt`.
+- `status: not_found` or `unavailable` → elements are **testability unverified** — do not flag as missing; no `dev-request.txt`.
 
 This cross-stage check is mandatory. Misclassifying unverified elements as missing will generate false developer feedback.
 

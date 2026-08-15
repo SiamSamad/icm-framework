@@ -1,0 +1,51 @@
+name: Security
+
+# Secret detection for a repo whose whole job is to generate test code against real
+# environments. The risk here is specific: a generated spec, a runner .env, or a
+# pasted ticket can carry a live key, and stage output is scratch that people copy
+# around freely. Catching that at push time is the point.
+#
+# The GitLab equivalent of this file enables the SAST and Secret-Detection templates.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  schedule:
+    # Weekly full-history scan. A key committed and then removed in a later commit is
+    # still in the history and still needs rotating; push-time scanning alone misses it
+    # once the branch has moved on.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  secret-detection:
+    name: Secret detection (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the scan covers every commit on the branch, not just the tip.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: CodeQL (JavaScript/TypeScript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - uses: github/codeql-action/analyze@v3

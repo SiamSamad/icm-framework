@@ -50,7 +50,7 @@ Input:  stages/01-normalize/output/<TICKET-ID>/spec.md
 Prompt: stages/02-test-cases/CONTEXT.md
 Output: stages/02-test-cases/output/<TICKET-ID>/test-cases.md
         stages/02-test-cases/output/<TICKET-ID>/report.html
-        stages/02-test-cases/output/<TICKET-ID>/dev-feedback.md  (only when selector gaps exist)
+        stages/02-test-cases/output/<TICKET-ID>/dev-request.txt  (only when selector gaps exist)
 ```
 
 Generate numbered test cases. Each must include: ID, title, preconditions, steps, expected result, pass criterion, and fail criterion.
@@ -225,7 +225,7 @@ stages/<NN-stage-name>/output/<TICKET-ID>/
    | Stage | Files |
    |-------|-------|
    | 01 — Normalize | `spec.md`, `report.html` |
-   | 02 — Test Cases | `test-cases.md`, `report.html`, `dev-feedback.md` (only when selector gaps exist) |
+   | 02 — Test Cases | `test-cases.md`, `report.html`, `dev-request.txt` (only when selector gaps exist) |
    | 03 — Approve | `approved.md` |
    | 04 — Generate and Run Tests | `report.html`, `summary.md`; `failed/TC-<n>.png` (one per failing test); `previous-run/` (prior run archive) — never `.spec.ts` or page object files |
    | 05 — Promote and Close | `summary.md`, `report.html` |
@@ -330,7 +330,7 @@ When scope includes Playwright scratch (scope 2 or 3), the candidates for deleti
 
 **Single ticket, single stage**
 "Clean up PROJ-2345 from Stage 02"
-→ Removes the whole folder `stages/02-test-cases/output/PROJ-2345/` (and everything inside it — `test-cases.md`, `report.html`, `dev-feedback.md` if present).
+→ Removes the whole folder `stages/02-test-cases/output/PROJ-2345/` (and everything inside it — `test-cases.md`, `report.html`, `dev-request.txt` if present).
 → No scope question — the stage-only target is already explicit.
 
 **Single ticket (all stages and/or Playwright scratch)**
@@ -379,6 +379,30 @@ Example listing (scope: Both):
 > - `stages/01-normalize/output/Order-Service/` — tmt-live, folder TMT-4102, 12 cases, fetched 2026-08-05
 → State plainly that the only way back is a Stage 01 re-run, and that any drift occurring between now and that re-run becomes undetectable. Wait for confirmation before deleting.
 → After a full reset, remove the corresponding negation lines from the baseline block in `.gitignore`.
+
+---
+
+### The `_archive/` Convention
+
+Stage outputs are ignored by git because they regenerate: re-run the stage and you get them back. Three things in this pipeline do **not** regenerate, and they are exactly the things worth keeping:
+
+- **Approval decisions** — what a reviewer approved, when, and what they changed.
+- **Promotion records** — what was promoted, to which branch, under which MR.
+- **Run evidence** — the report and screenshots from the run that justified a promotion.
+
+Re-running a stage produces a *new* one of each. It cannot reproduce the old one, because the inputs have moved on.
+
+So when a ticket's outputs are worth preserving past cleanup — an audit, a postmortem, a rebuild of the pipeline itself — copy them into a dated snapshot folder before deleting:
+
+```
+_archive/2026-08-15-<short-reason>/
+  <TICKET-ID>/
+    approved.md
+    summary.md
+    report.html
+```
+
+`_archive/` is **deliberately tracked in git** and must stay that way. Never add an ignore rule that swallows it, and never widen an existing rule (`output/`, `*.html`, `reports/`) in a way that catches it by accident. Archiving is always explicit — no stage writes here on its own, and cleanup never creates a snapshot without being asked.
 
 ---
 

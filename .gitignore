@@ -46,3 +46,9 @@ Thumbs.db
 playwright/**/test-results/
 playwright/**/playwright-report/
 playwright/**/auth/*session*
+
+# _archive/ is deliberately TRACKED and must stay that way.
+# Stage outputs above are ignored because they regenerate; _archive/ holds
+# snapshots of artifacts that cannot be regenerated — human approval decisions,
+# promotion records, and test-run evidence. Never add an ignore rule that
+# swallows it, and never widen one until it does.
