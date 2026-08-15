@@ -36,8 +36,8 @@ Use the config to inform all decisions in this stage — base URLs, test account
 #### Generated test files — TEMPORARY scratch parking
 
 ```
-playwright/{product}/pages/{PageName}Page.ts
-playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts
+playwright/web/{product}/pages/{PageName}Page.ts
+playwright/web/{product}/tests/{category}/{TICKET-ID}.spec.ts
 ```
 
 These are **temporary scratch parking only**. Tests live here until proven green. The permanent home is the promotion target (an external test repo, or this repo's integration branch in same-repo mode); promotion happens in Stage 05 — **never in Stage 04**.
@@ -62,7 +62,7 @@ Two generation paths. **UI tests** produce page objects plus a spec, described b
 
 Generate two files per ticket from the approved test cases and product config.
 
-### File 1 — Page Object(s) (`playwright/{product}/pages/`)
+### File 1 — Page Object(s) (`playwright/web/{product}/pages/`)
 
 One TypeScript class per page or modal involved in the tests.
 
@@ -71,7 +71,7 @@ One TypeScript class per page or modal involved in the tests.
 - Every interactable element gets a method; every navigable route gets a `goto()` method
 - Locators are defined once as `private readonly` class properties
 
-### File 2 — Test Spec (`playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts`)
+### File 2 — Test Spec (`playwright/web/{product}/tests/{category}/{TICKET-ID}.spec.ts`)
 
 One spec file containing all approved test cases.
 
@@ -84,12 +84,12 @@ One spec file containing all approved test cases.
 
 Route the two generated files by the `product` field — **never** by the ticket ID prefix. A ticket's ID prefix does not reliably indicate which product it belongs to; always trust the `product` field carried through the pipeline.
 
-Page objects always go to `playwright/{product}/pages/`. The test spec's `{category}` folder depends on which routing mode the product config declares:
+Page objects always go to `playwright/web/{product}/pages/`. The test spec's `{category}` folder depends on which routing mode the product config declares:
 
 | Routing mode | Test spec goes to | When to use |
 |--------------|-------------------|-------------|
-| **Tier-based** (default) | `playwright/{product}/tests/{smoke\|regression\|e2e}/` | Product config has no page-area table |
-| **Page-based** | `playwright/{product}/tests/{page-area}/` | Product config defines a "Key Flows and Routes" (page areas) table |
+| **Tier-based** (default) | `playwright/web/{product}/tests/{smoke\|regression\|e2e}/` | Product config has no page-area table |
+| **Page-based** | `playwright/web/{product}/tests/{page-area}/` | Product config defines a "Key Flows and Routes" (page areas) table |
 
 **Tier-based routing:** route the spec by test tier driven by the test's tags: tests that are exclusively `@smoke` or `@regression` (not full e2e flows) go to `tests/smoke/` or `tests/regression/`; otherwise `tests/e2e/`.
 
@@ -103,7 +103,7 @@ Determine which page folder the test spec belongs in by reading the ticket's con
 
 - **If a page can be confidently determined**, save the spec there and print a line in the conversation stating the choice and why, e.g.:
   `📁 Page folder: checkout/  (ticket is about the checkout flow)`
-- **If the correct page cannot be confidently determined**, save the spec to `playwright/{product}/tests/_unsorted/` instead and print:
+- **If the correct page cannot be confidently determined**, save the spec to `playwright/web/{product}/tests/_unsorted/` instead and print:
   `⚠️ Could not confidently determine the page folder — placed in _unsorted/. Please move it to the correct page folder.`
 
 ---
@@ -249,7 +249,7 @@ After generating (or when handling a re-run request), execute the ticket's spec 
 
 **Run command:**
 ```
-cd playwright/{product}
+cd playwright/web/{product}
 npx playwright test --project={product} tests/{category}/{TICKET-ID}.spec.ts
 ```
 (`{category}` is the tier folder or page-area folder chosen by the routing rules above.)
@@ -266,9 +266,9 @@ Only mark individual tests as FAILED when auth succeeded and the spec itself fai
 
 ## STEP 3 — COLLECT SCREENSHOTS
 
-Playwright's `screenshot: 'only-on-failure'` setting writes screenshots to `playwright/{product}/test-results/` after failed runs.
+Playwright's `screenshot: 'only-on-failure'` setting writes screenshots to `playwright/web/{product}/test-results/` after failed runs.
 
-1. For each failing test, locate its `test-failed-1.png` (or equivalent) under `playwright/{product}/test-results/`. The folder name is derived from the spec path and test description — look for a path that contains the TICKET-ID and the test name.
+1. For each failing test, locate its `test-failed-1.png` (or equivalent) under `playwright/web/{product}/test-results/`. The folder name is derived from the spec path and test description — look for a path that contains the TICKET-ID and the test name.
 2. Create `stages/04-generate-tests/output/<TICKET-ID>/failed/` if it does not exist.
 3. Copy each screenshot to `stages/04-generate-tests/output/<TICKET-ID>/failed/TC-<n>.png`, where `<n>` is the test case number (`TC-1.png`, `TC-2.png`, etc.).
 
@@ -375,7 +375,7 @@ End the stage with a conversation message that states:
 
 ### What "re-run Stage 04 for \<TICKET-ID\>" means
 
-Re-run = execute the already-parked test files (STEP 2 onward), with the previous-run rotation applied before writing fresh output. **Do NOT regenerate page objects or the spec file** — those files already exist at `playwright/{product}/`. Regeneration only happens when explicitly asked.
+Re-run = execute the already-parked test files (STEP 2 onward), with the previous-run rotation applied before writing fresh output. **Do NOT regenerate page objects or the spec file** — those files already exist at `playwright/web/{product}/`. Regeneration only happens when explicitly asked.
 
 ---
 
@@ -383,8 +383,8 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 
 | File | Path | Condition |
 |------|------|-----------|
-| Page object(s) | `playwright/{product}/pages/{PageName}Page.ts` | UI tests (temporary scratch) |
-| Test spec | `playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts` | UI tests (temporary scratch) |
+| Page object(s) | `playwright/web/{product}/pages/{PageName}Page.ts` | UI tests (temporary scratch) |
+| Test spec | `playwright/web/{product}/tests/{category}/{TICKET-ID}.spec.ts` | UI tests (temporary scratch) |
 | API test spec | `playwright/api/tests/{service}/<name>.spec.ts` | API tests (temporary scratch) |
 | Env config modules | `playwright/api/config/{required,env.shared,env.{service},env}.ts` | API tests (temporary scratch) |
 | HTML run report | `stages/04-generate-tests/output/<TICKET-ID>/report.html` | Always |
@@ -417,7 +417,7 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 - Every `browser.newContext()` is matched with `await context.close()` at the end of the test.
 - Base URL, credentials, and device configs come from `_config/<product>.md` via `process.env`, not hardcoded.
 - Page object file names match `{PageName}Page.ts` exactly.
-- Spec file is saved to the correct category folder under `playwright/{product}/tests/` only — never duplicated under `stages/04-generate-tests/output/`.
+- Spec file is saved to the correct category folder under `playwright/web/{product}/tests/` only — never duplicated under `stages/04-generate-tests/output/`.
 - Product was read from the approved test cases' `product` field — never inferred from the ticket ID prefix.
 - For page-based products, the page-folder choice (or the `_unsorted/` fallback) was announced in the conversation — never silent.
 

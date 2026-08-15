@@ -1,17 +1,21 @@
 {
-  "name": "icm-playwright",
+  "name": "icm-playwright-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Playwright test project driven by the ICM framework. One shared setup; per-product buckets.",
+  "description": "Web (UI) Playwright runner driven by the ICM framework. One shared config; per-product buckets.",
   "scripts": {
     "test": "playwright test",
+    "test:web": "playwright test",
+    "test:example-product": "playwright test --project=example-product",
     "test:smoke": "playwright test --grep @smoke",
     "test:regression": "playwright test --grep @regression",
     "test:e2e": "playwright test --grep @e2e",
+    "test:auth-unverified": "playwright test --grep @auth-unverified --list",
     "report": "playwright show-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
+    "dotenv": "^16.4.5",
     "typescript": "^5.6.0"
   }
 }

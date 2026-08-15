@@ -6,8 +6,8 @@
 |------|------|---------|
 | Layer 4 | `stages/04-generate-tests/output/<TICKET-ID>/summary.md` | Stage 04 verdict — must be PASSED |
 | Layer 4 | `stages/04-generate-tests/output/<TICKET-ID>/report.html` | Stage 04 run report |
-| Layer 4 | `playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts` | Validated spec to promote |
-| Layer 4 | `playwright/{product}/pages/*.ts` | Page objects to promote |
+| Layer 4 | `playwright/web/{product}/tests/{category}/{TICKET-ID}.spec.ts` | Validated spec to promote |
+| Layer 4 | `playwright/web/{product}/pages/*.ts` | Page objects to promote |
 | Layer 3 | `_config/<product>.md` | Product config |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
 
@@ -61,7 +61,7 @@ git pull origin develop
 
 For each page object imported by this ticket's spec file:
 
-1. Check whether a file with the same name exists in `playwright/{product}/pages/` in the promotion target.
+1. Check whether a file with the same name exists in `playwright/web/{product}/pages/` in the promotion target.
 2. **No match** — the page object is new. Mark it for copy in STEP 2.
 3. **Match exists** — compare our ICM version against the promotion target version:
    - If the promotion target version already has all the locators and methods our tests need: **reuse it as-is**. Do not overwrite.
@@ -84,12 +84,12 @@ Confirm the target folder exists in the promotion target. Create it if missing. 
 
 | Product | Target folder |
 |---------|--------------|
-| Page-based products | `playwright/{product}/tests/{page-area}/` — page areas from the product config |
-| Tier-based products (default) | `playwright/{product}/tests/{smoke\|regression\|e2e}/` |
+| Page-based products | `playwright/web/{product}/tests/{page-area}/` — page areas from the product config |
+| Tier-based products (default) | `playwright/web/{product}/tests/{smoke\|regression\|e2e}/` |
 
 #### `_unsorted/` blocker
 
-If the Stage 04 page-folder announcement placed the spec in `playwright/{product}/tests/_unsorted/`, **stop**. Ask:
+If the Stage 04 page-folder announcement placed the spec in `playwright/web/{product}/tests/_unsorted/`, **stop**. Ask:
 > "The spec is in `_unsorted/` — which page area folder should it be promoted to?" (list the page areas from the product config)
 
 Move the spec to the correct folder in the ICM scratch runner before promoting. `_unsorted/` must never be promoted to the promotion target.
@@ -107,8 +107,8 @@ git checkout -b <TICKET-ID>
 ```
 
 **2. Copy the validated files** — exactly what this ticket's tests need, nothing else:
-- Spec file → `playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts`
-- New page object files → `playwright/{product}/pages/` (only for page objects marked `created` in the audit; merged additions are written directly into existing files in place)
+- Spec file → `playwright/web/{product}/tests/{category}/{TICKET-ID}.spec.ts`
+- New page object files → `playwright/web/{product}/pages/` (only for page objects marked `created` in the audit; merged additions are written directly into existing files in place)
 
 **Never copy:** `.env`, auth session files (anything under `auth/` that stores a session), `test-results/`, `playwright-report/`, `node_modules/`, or any ICM stage output files.
 
@@ -170,8 +170,8 @@ Write two files to `stages/05-results/output/<TICKET-ID>/` (create the folder if
 
 | File | Destination | Action |
 |------|-------------|--------|
-| <TICKET-ID>.spec.ts | playwright/{product}/tests/{category}/ | created |
-| <PageName>Page.ts | playwright/{product}/pages/ | created / reused / merged N additions |
+| <TICKET-ID>.spec.ts | playwright/web/{product}/tests/{category}/ | created |
+| <PageName>Page.ts | playwright/web/{product}/pages/ | created / reused / merged N additions |
 
 ## Promotion MR
 

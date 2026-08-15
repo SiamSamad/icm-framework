@@ -2,7 +2,7 @@
 
 **ICM (Interpretable Context Methodology)** is a five-stage pipeline that converts tickets into validated, promoted Playwright tests. Every stage produces a readable file a human can inspect before anything moves forward. Nothing becomes code without a QE sign-off. Nothing is promoted to the permanent test suite without a clean run.
 
-This repo is the clean, portable baseline: point it at any product by adding a `_config/<product>.md` and a `playwright/<product>/` bucket.
+This repo is the clean, portable baseline: point it at any product by adding a `_config/<product>.md` and a `playwright/web/<product>/` bucket.
 
 ---
 
@@ -30,7 +30,7 @@ The spec expands into a numbered list of test cases — one per acceptance crite
 
 ### Stage 04 — Generate and Run
 
-Claude writes the Playwright test files (page objects and a test spec) and immediately runs them in the local scratch runner. The report is failure-first: each failing test gets the step it broke on, the error message, and a screenshot. A rollup at the bottom groups failures by cause — missing selectors, assertion mismatches, timeouts — so a developer can act on all of them at once. The ticket can only advance when the latest run is fully green. Tests are parked in `playwright/<product>/` temporarily; this folder is scratch, not the permanent home.
+Claude writes the Playwright test files (page objects and a test spec) and immediately runs them in the local scratch runner. The report is failure-first: each failing test gets the step it broke on, the error message, and a screenshot. A rollup at the bottom groups failures by cause — missing selectors, assertion mismatches, timeouts — so a developer can act on all of them at once. The ticket can only advance when the latest run is fully green. Tests are parked in `playwright/web/<product>/` temporarily; this folder is scratch, not the permanent home.
 
 ### Stage 05 — Promote and Close
 
@@ -43,7 +43,7 @@ Green tickets only. Claude audits the promotion target (an external test repo, o
 | Location | What's there |
 |----------|-------------|
 | `stages/<NN>-*/output/<TICKET-ID>/` | Per-ticket stage output — specs, test cases, reports, approvals |
-| `playwright/<product>/` | **Temporary scratch** — parked tests, unproven until Stage 04 passes |
+| `playwright/web/<product>/` | **Temporary scratch** — parked tests, unproven until Stage 04 passes |
 | Promotion target | Permanent home for validated tests — an external test repo, or this repo’s integration branch (same-repo mode) |
 | `_config/<product>.md` | Per-product settings: base URLs, test accounts, selector conventions |
 | `CLAUDE.md` | Operational runbook — exact filenames, pipeline rules, cleanup commands |

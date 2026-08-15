@@ -1,0 +1,19 @@
+{
+  "name": "icm-playwright-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API Playwright runner driven by the ICM framework. One project; service selection via --grep.",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:order-service": "playwright test --project=api --grep @order-service",
+    "test:inventory-service": "playwright test --project=api --grep @inventory-service",
+    "test:auth-unverified": "playwright test --grep @auth-unverified --list",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.6.0"
+  }
+}
