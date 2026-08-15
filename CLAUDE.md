@@ -130,6 +130,8 @@ _config/
   source-freshness.md  ← content fingerprinting, drift comparison, delta report, baseline sharing
   service-source-lookup.md ← constraint extraction from service source; the authority rule
   auth-behavior.md     ← per-service auth header and status codes, VERIFIED/ASSUMED provenance
+  api-test-mapping.md  ← Stage 02: test definition schema, tag naming, output document structure
+  api-test-generation.md ← Stage 04: API routing, request-fixture template, env module protocol
 _tools/                ← deterministic helper scripts (Node, zero dependencies)
   case-hash.mjs        ← per-case content fingerprints; the only hash implementation
   baseline-tracked.mjs ← keeps freshness baselines out of .gitignore; self-fixes with --add

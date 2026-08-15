@@ -6,7 +6,9 @@
 |------|------|---------|
 | Layer 4 | `stages/03-approve/output/<TICKET-ID>/approved.md` | Approved test cases; must contain `Proceed to Stage 04: YES` |
 | Layer 3 | `_config/<product>.md` | Base URLs, test accounts, device configs, env var names |
-| Layer 3 | `_config/selectors.md` | Selector priority order for page object locators |
+| Layer 3 | `_config/selectors.md` | UI tests only — selector priority order for page object locators |
+| Layer 3 | `_config/api-test-generation.md` | API tests only — output routing, request-fixture template, env module protocol, pending formats, DB validation |
+| Layer 3 | `_config/auth-behavior.md` | API tests only — per-service auth header and status codes; read before any auth assertion |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
 
 ---
@@ -53,6 +55,10 @@ stages/04-generate-tests/output/<TICKET-ID>/
 ---
 
 ## STEP 1 — GENERATE
+
+Two generation paths. **UI tests** produce page objects plus a spec, described below. **API tests** produce a spec plus environment config modules and follow `_config/api-test-generation.md` — see API Test Generation at the end of this step.
+
+### UI Test Generation
 
 Generate two files per ticket from the approved test cases and product config.
 
@@ -213,6 +219,30 @@ For tests that assert the native OS dialog appears (e.g., AC-3 "one-tap enable")
 
 ---
 
+## API Test Generation
+
+Applies when the approved definitions came from an API spec. Load `_config/api-test-generation.md` and follow it for routing, the template, and every format below. Output goes to `playwright/api/`, never `playwright/web/`.
+
+**Step 1 — Environment config modules, in strict order.** `required.ts` (write once, never modify), `env.shared.ts` (generated empty; a variable moves here only when a *second* service reads it), `env.{service}.ts` (append-only, never reorder, never touch another service's module), then the `env.ts` barrel (add exactly one import, one descriptor spread, one cast type). A pre-split monolithic `env.ts` is reported, never auto-migrated.
+
+**Step 2 — One spec per service or endpoint group**, named for the service rather than the ticket, using the Playwright `request` fixture. **No `browser`, no `page`, no page objects, no `storageState`, no selectors** — their presence in an API spec is a generation defect.
+
+**Step 3 — Assertions.** Open assertions (`open_item: true`) generate as commented-out pending blocks carrying the `open_reason`; never invent an expected value. Auth assertions take their status from `_config/auth-behavior.md`, and an ASSUMED row adds `@auth-unverified` to the tag array. Unresolved auth mechanisms generate the auth placeholder block quoting the open question.
+
+**Step 4 — DB validation.** For each test with `type_prefix: API/DB` or `FUNC/DB`, or a non-empty `data_validation` entry in the Stage 01 `coverage_matrix`, generate a post-call DB verification step after the API assertion. Include the SQL and tables when known; otherwise generate the pending block. Do not invent SQL, and **never open a DB connection unless the connection details are present in `environment_config`**.
+
+**Step 5 — Skipped definitions generate as skipped**, never active — see SKIPPED TEST GENERATION.
+
+**Step 6 — Ask before running.** Present the generation report summary (tests generated per service, pending items) and ask whether to run now or hold. **Do not auto-run.** If the target environment is unreachable, report that and hold — an unreachable environment is not a test failure. Once the user chooses to run, STEP 2 below applies unchanged.
+
+**Run command:**
+```
+cd playwright/api
+npx playwright test --grep @order-service
+```
+
+---
+
 ## STEP 2 — RUN
 
 After generating (or when handling a re-run request), execute the ticket's spec via the local Playwright runner. Each product has its own runner directory with its own `package.json` and `playwright.config.ts`; auth setup runs automatically as a project dependency.
@@ -300,7 +330,7 @@ The reason string appears in **two** places, because they serve different reader
 // confirmed and the cases are regenerated.
 test.skip(
   'order-service-DEMO-TC-1201 — POST /v1/orders',
-  { tag: ['@api', '@order-service', '@blocked-status-enum'] },
+  { tag: ['@example-product', '@order-service', '@blocked-status-enum'] },
   async ({ request }) => {
     // body generated in full, exactly as if it were active
   },
@@ -353,8 +383,10 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 
 | File | Path | Condition |
 |------|------|-----------|
-| Page object(s) | `playwright/{product}/pages/{PageName}Page.ts` | Always (temporary scratch) |
-| Test spec | `playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts` | Always (temporary scratch) |
+| Page object(s) | `playwright/{product}/pages/{PageName}Page.ts` | UI tests (temporary scratch) |
+| Test spec | `playwright/{product}/tests/{category}/{TICKET-ID}.spec.ts` | UI tests (temporary scratch) |
+| API test spec | `playwright/api/tests/{service}/<name>.spec.ts` | API tests (temporary scratch) |
+| Env config modules | `playwright/api/config/{required,env.shared,env.{service},env}.ts` | API tests (temporary scratch) |
 | HTML run report | `stages/04-generate-tests/output/<TICKET-ID>/report.html` | Always |
 | Plain-text summary | `stages/04-generate-tests/output/<TICKET-ID>/summary.md` | Always |
 | Failure screenshots | `stages/04-generate-tests/output/<TICKET-ID>/failed/TC-<n>.png` | One per failing test |
@@ -388,3 +420,16 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 - Spec file is saved to the correct category folder under `playwright/{product}/tests/` only — never duplicated under `stages/04-generate-tests/output/`.
 - Product was read from the approved test cases' `product` field — never inferred from the ticket ID prefix.
 - For page-based products, the page-folder choice (or the `_unsorted/` fallback) was announced in the conversation — never silent.
+
+**API tests:**
+- No API spec imports `browser`, `page`, a page object, `storageState`, or any selector.
+- Every generated test carries both `product_tag` and `service_tag` exactly as the Stage 02 definition wrote them.
+- Every test body opens with the `// Stage 02 case: <case_id>` traceability comment.
+- No test reads `process.env` directly — every value comes through the `env` barrel.
+- Every variable in Stage 01 `environment_config.variables` has an entry in that service's env module, and no variable name is declared in two modules.
+- `required.ts` was written only if absent, and never modified. No other service's env module was touched.
+- A pre-split monolithic `env.ts` was reported, never auto-migrated.
+- `.env.example` was not written by this stage — Stage 05 owns it at promotion time.
+- Every pending assertion, pending DB validation, and pending auth block carries a stated reason and appears in the generation report.
+- No DB connection was opened without connection details in `environment_config`, and no SQL was invented.
+- Every `finally` teardown block deletes the resources its setup created.

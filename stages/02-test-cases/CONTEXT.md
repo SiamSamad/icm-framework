@@ -9,6 +9,7 @@
 | Layer 3 | `_config/selectors.md` | Three-path testability strategy, selector priority order, `data-testid` naming conventions |
 | Layer 3 | `_config/writing-rules.md` | Finding structure and prose standards for all output |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
+| Layer 3 | `_config/api-test-mapping.md` | **API specs only** — test definition schema, tag naming, independence rule, output document structure |
 | Layer 3 | `_config/service-source-lookup.md` | **API specs only** — the authority rule, `constraint_layer` states, and how to act on a disagreement |
 | Layer 3 | `_config/auth-behavior.md` | **API specs only** — auth header and missing/invalid-key status per service; read before writing any auth assertion |
 
@@ -59,6 +60,18 @@ Classify each element into exactly one of three categories:
 **Elements missing a usable selector** — the code diff was read (`status: read`) but no stable selector was found for this element. Flag it as a gap and recommend a specific `data-testid` value following the naming conventions in `_config/selectors.md`.
 
 **Testability unverified** — the code diff was not available (`status: not_found` or `unavailable`). Do NOT flag these as missing — the selector may exist in the code; we simply couldn't check. List the element and note that testability is unconfirmed pending code access.
+
+### API Test Mapping (API specs)
+
+Where the Stage 01 spec carries a `cases` inventory rather than acceptance criteria, this stage maps cases to **test definitions** instead of writing test cases from scratch. Load `_config/api-test-mapping.md` and follow it. In outline:
+
+1. **One definition per case where `automatable_now: true`.** Method and path come from `api_contract.endpoints`, which is authoritative; headers and body values are `${VAR}` references, never literals.
+2. **Cases with `automatable_now: false` go to Deferred Cases**, carrying their `held_reason` from Stage 01. They produce no definition — and they are not skips.
+3. **Every definition is independent.** A case operating on a pre-existing resource creates it in `setup` and removes it in `teardown`. No definition depends on another having run.
+4. **Assertions the contract cannot support** are `open_item: true` with a reason, collected into Testability Gaps. Never guess an expected value.
+5. **Mark blocked definitions skipped** using the Skip Directive below — a fully specified test with a known external blocker is skipped, not deferred.
+6. **Overlap detection** against the promotion target's existing tests, by method/path/assertions rather than name. Detection only; never auto-skip on overlap.
+7. **Emit the output document** in the exact section order given in `_config/api-test-mapping.md`.
 
 ### Skip Directive
 
@@ -352,6 +365,15 @@ This cross-stage check is mandatory. Misclassifying unverified elements as missi
 - Recommended `data-testid` values follow the naming conventions in `_config/selectors.md` — no arbitrary or inconsistent names.
 - The report's "Code diff available" header accurately reflects the `sources_read.code_diff.status` from the normalized spec.
 - Every entry in "Elements missing a usable selector" uses the two-line compressed format (Missing / Fix). The Finding Structure from `_config/writing-rules.md` applies to "Testability unverified" entries only.
+
+**API test mapping (API specs):**
+- Every case with `automatable_now: true` produced exactly one test definition; every case with `automatable_now: false` appears in Deferred Cases with its held reason.
+- Method and path came from `api_contract.endpoints`, never from ticket prose alone.
+- No header or body value is a literal — all are `${VAR}` references.
+- Every definition that operates on a pre-existing resource has both `setup` and `teardown` populated.
+- Every open assertion has a non-empty `open_reason` and appears in Testability Gaps.
+- `service_tag` was derived from the spec, and never defaulted to the product tag.
+- Overlap detection compared method, path, and assertions — not names — and skipped nothing automatically.
 
 **Skip directives:**
 - Every skipped test has both a `Skip` row and a non-empty `Skip reason:` paragraph — never one without the other.
