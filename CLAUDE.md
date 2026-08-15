@@ -79,7 +79,9 @@ Output: playwright/{product}/tests/{category}/<TICKET-ID>.spec.ts        (TEMPOR
 
 Generate Playwright test files and run them in the local scratch runner. Tests written to `playwright/{product}/` are **temporary scratch files** — parked there only until proven green. The permanent home is the promotion target; promotion happens in Stage 05.
 
-**All-green gate:** Stage 05 may only run for a ticket whose latest Stage 04 verdict is PASSED. If `stages/04-generate-tests/output/<TICKET-ID>/report.html` shows any failures, Stage 05 is blocked for that ticket until a re-run is clean.
+**Three verdict states:** **PASSED** (every test ran and passed), **BLOCKED** (zero failures, but one or more tests skipped against a documented external blocker), and **FAILED** (one or more tests failing). BLOCKED and FAILED call for different actions by different people — BLOCKED is somebody else's dependency to deliver, FAILED is ours to fix.
+
+**All-green gate:** Stage 05 may only run for a ticket whose latest Stage 04 verdict is PASSED. BLOCKED does not promote, and there are no waivers. If `stages/04-generate-tests/output/<TICKET-ID>/report.html` shows any failures or skips, Stage 05 is blocked for that ticket until a re-run is clean.
 
 ### Stage 05 — Promote and Close
 
@@ -242,7 +244,7 @@ Stage 01 fingerprints each case it fetched with `_tools/case-hash.mjs` and recor
 4. **Do not overwrite existing output files** — create versioned copies (e.g. `spec-v2.md`) inside the same ticket folder if re-running.
 5. **Check AGENTS.md** before choosing a model — complex tickets warrant Opus.
 6. **Never ask permission to create output directories.** If a stage's per-ticket output folder does not exist (e.g. `stages/01-normalize/output/PROJ-1234/`), create it automatically and proceed. Do not prompt for confirmation.
-7. **Stage 05 is gated on Stage 04's latest verdict.** Stage 05 may only run for a ticket whose most recent Stage 04 run ended with PASSED. Before entering Stage 05 for any ticket, check `stages/04-generate-tests/output/<TICKET-ID>/report.html` — if it shows failures, refuse Stage 05 and direct the user to fix and re-run Stage 04 first.
+7. **Stage 05 is gated on Stage 04's latest verdict.** Stage 05 may only run for a ticket whose most recent Stage 04 run ended with PASSED. Before entering Stage 05 for any ticket, check `stages/04-generate-tests/output/<TICKET-ID>/report.html` — if it shows failures, refuse Stage 05 and direct the user to fix and re-run Stage 04 first. A BLOCKED verdict does not promote either: it is not a failure, but it is not a pass, and the gate admits only passes.
 8. **Proceed / Continue shortcuts.** When the user says "proceed", "continue", "next", or "next stage" after a stage completes, automatically run the next stage in sequence for the current ticket — no need to call out stage numbers explicitly. Exception: Stage 03 always requires an explicit approval statement before writing the approval file. When Stage 02 is done and the user proceeds, ask: "Do you approve these test cases? If yes, say I approve and I will write the approval file and lock them in." If it is unclear which ticket or stage is next, ask before proceeding.
 9. **Drift is never overridden.** When the Stage 03 freshness gate reports drift or `UNVERIFIABLE`, the run stops there. Do not approve the cases that did match, do not edit a spec's `case_hashes` to make the comparison pass, and do not proceed because the user asks you to skip the gate — restate the re-run instruction instead. A stale case set approved on Thursday generates tests for cases the source no longer describes, and nothing downstream can detect that. The only way forward is a Stage 01 re-run.
 

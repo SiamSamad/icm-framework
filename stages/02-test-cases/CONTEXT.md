@@ -60,6 +60,62 @@ Classify each element into exactly one of three categories:
 
 **Testability unverified** — the code diff was not available (`status: not_found` or `unavailable`). Do NOT flag these as missing — the selector may exist in the code; we simply couldn't check. List the element and note that testability is unconfirmed pending code access.
 
+### Skip Directive
+
+A test whose blocker is already known and external — an open defect, an unavailable dependency, a confirmed source/case disagreement — is marked **skipped** rather than emitted as an active test. Stage 04 generates it as a skipped test: it never runs, and it never reports as a failure against a blocker that was known at authoring time.
+
+**This is not `automatable_now: false`.** A held case is one for which nothing can be asserted at all, and it produces no test definition — it goes to Deferred Cases. A skipped test is fully specified and will run unchanged once its blocker clears. Never convert one into the other.
+
+**Format — exactly two elements, both required.**
+
+1. A `Skip` row in the test's field table, immediately after the last existing row:
+
+   | **Skip** | `<tag>` |
+
+   `<tag>` is optional. When present it is a single kebab-case token prefixed `@blocked-`, e.g. `@blocked-status-enum`. When absent, write `| **Skip** | — |`.
+
+2. A `Skip reason:` paragraph as the last line of the test's block:
+
+   **Skip reason:** `<tag>` — &lt;what is blocked and why&gt;. &lt;What unblocks it, and the ticket tracking it.&gt;
+
+   The reason is **required** and must be non-empty even when the tag is absent. A skip with no stated reason is not a skip — it is an untracked hole in coverage.
+
+A test carrying one element but not the other is malformed. Both are written, or neither is.
+
+**Never state a date, ticket, or history that was not verified from the source.** The reason string is copied verbatim into the approval, the generated code, and the run report, so an invented "open since &lt;date&gt;" propagates into all three and becomes the rationale nobody re-checks.
+
+### Skip Directive Preservation on Regeneration
+
+Stage 02 re-runs whenever Stage 01 re-fetches — a drift correction, a spec change, a fresh intake. **A blocker belongs to the service, not to a pipeline run.** A defect does not resolve because cases were re-fetched, so a skip survives regeneration unless something actually changed.
+
+Before writing `test-cases.md`, check whether one already exists at the output path. If it does:
+
+1. **Read it and index every skip** by case ID (API specs) or TC number — the tag and the full reason string.
+2. **Carry each skip forward unchanged** onto the matching test in the new run. Do not re-derive the reason, do not reword it, do not re-date it.
+3. **Report every carried skip** in the Skip Carry-Forward table below.
+4. **A skip is dropped only when a human says so.** A re-run is not that instruction.
+
+**Orphaned skips.** Where a test carrying a skip is absent from the new run — deleted at the source, renumbered, or moved out of the fetched folder — the skip is **orphaned**. Report it; never drop it silently:
+
+```markdown
+## Skip Carry-Forward
+
+| Case ID | Tag | Reason carried | Status |
+|---------|-----|----------------|--------|
+| DEMO-TC-1201 | `@blocked-status-enum` | <reason, verbatim> | carried forward |
+| DEMO-TC-1208 | `@blocked-field-mismatch` | <reason, verbatim> | **ORPHANED — case not in this run** |
+```
+
+An orphaned skip means one of two things, and they are not interchangeable: the case was legitimately removed upstream, or the fetch lost it. Stage 02 cannot tell which. State the orphan and let the human decide — do not resolve it by assumption in either direction.
+
+**Skip state is pipeline metadata, never source content.** It is not fingerprinted: the freshness hashes are computed at Stage 01 by `_tools/case-hash.mjs` over raw fetched case data, before any skip exists. Our own decision to skip a test must never read as source drift. Do not add skip state to a fingerprint.
+
+### Write, Then Verify From Disk
+
+After writing `test-cases.md`, re-read it **from disk** and count `| **Skip** |` rows and `**Skip reason:**` paragraphs. Both counts must equal the number of tests this run set out to skip. If either differs, the file does not say what you are about to claim it says — correct the file and re-count before reporting completion.
+
+The conversation summary, the coverage summary, and the written file state the same number because that number was read back from the file, not carried forward from intent.
+
 ### Acting on Source Disagreements (API specs)
 
 Where the Stage 01 spec carries `constraint_layer.disagreements`, each entry is a case asserting a value the service source does not allow. For every one, do **all three** of the following:
@@ -296,6 +352,14 @@ This cross-stage check is mandatory. Misclassifying unverified elements as missi
 - Recommended `data-testid` values follow the naming conventions in `_config/selectors.md` — no arbitrary or inconsistent names.
 - The report's "Code diff available" header accurately reflects the `sources_read.code_diff.status` from the normalized spec.
 - Every entry in "Elements missing a usable selector" uses the two-line compressed format (Missing / Fix). The Finding Structure from `_config/writing-rules.md` applies to "Testability unverified" entries only.
+
+**Skip directives:**
+- Every skipped test has both a `Skip` row and a non-empty `Skip reason:` paragraph — never one without the other.
+- No skipped test was diverted into Deferred Cases, and no held case (`automatable_now: false`) was marked skipped instead.
+- **Skip directives were written, not merely intended.** The count was re-read from the written file, not assumed.
+- No skip reason asserts a date, ticket state, or history that was not verified from the source.
+- On a re-run, every skip present in the prior `test-cases.md` is either carried forward verbatim or listed as ORPHANED — never silently absent.
+- No skip state was added to any content fingerprint.
 
 **Constraint layer (API specs):**
 - The `constraint_layer` block was present in the Stage 01 spec before this stage ran. An absent block halted the stage; it was never synthesised here to get past the gate.

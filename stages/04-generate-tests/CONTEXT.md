@@ -262,6 +262,7 @@ Follow `_config/report-style.md` for HTML conventions (pure HTML + inline CSS, z
 
 **1. Verdict banner** — prominently at the top of the page:
 - All passing: `✅ PASSED — eligible for Stage 05`
+- Zero failures, one or more tests skipped with documented external blockers: `🟡 BLOCKED — X of M tests skipped (external dependency). Stage 05 is blocked until all tests pass. See dev-request.txt.`
 - Any failure: `❌ FAILED — N of M tests failing. Fix and re-run. Stage 05 is blocked for this ticket.`
 
 **2. FAILED TESTS section** (omit entirely if no failures) — one block per failing test:
@@ -283,15 +284,63 @@ Mirror of `report.html` in plain Markdown. Same four sections (verdict, failed t
 
 ---
 
+## SKIPPED TEST GENERATION
+
+A test definition arriving from Stage 03 with a `Skip` row is **generated as a skipped test**. It is never generated as active, and the skip is never dropped because the blocker looks resolved — that judgement belongs to Stage 02 and the human who approved it, not to generation.
+
+The reason string appears in **two** places, because they serve different readers:
+
+1. **A comment directly above the test** — for whoever opens the file.
+2. **Inside the `test.skip()` call itself** — so it reaches the run output and the report, where nobody is reading source.
+
+```typescript
+// SKIPPED — @blocked-status-enum
+// New orders are created with status PENDING; the cases assert DRAFT, and the service
+// exposes no DRAFT state. Tracked on DEMO-4471. Unblocks when the status model is
+// confirmed and the cases are regenerated.
+test.skip(
+  'order-service-DEMO-TC-1201 — POST /v1/orders',
+  { tag: ['@api', '@order-service', '@blocked-status-enum'] },
+  async ({ request }) => {
+    // body generated in full, exactly as if it were active
+  },
+);
+```
+
+UI tests use the identical shape with the Mode A tags and the `{ tag: [...] }` option already required by Test Spec Standards.
+
+**Rules:**
+
+- **Generate the body in full.** A skipped test is a complete test that is not running yet. An empty or stubbed body means the skip cannot simply be lifted when the blocker clears — the test would have to be written from scratch.
+- **The tag, when present, joins the test's tag array** alongside the product and service tags, so `--grep` can select or exclude every test behind one blocker in a single run.
+- **Never `test.skip()` without a reason**, and never let the reason live only in the comment. Both placements are required.
+- **Skipped tests count toward the `Z skipped` figure** in the verdict counts, and each is listed in `summary.md` with its reason. They are never reported as passes.
+- **A skipped test cannot fail**, so it never contributes to a FAILED verdict. A run whose only non-passing tests are skips is **BLOCKED**, not FAILED.
+
+---
+
 ## STEP 5 — VERDICT AND HANDOFF
+
+### Three verdict states
+
+**PASSED** — every test ran and passed. Eligible for Stage 05.
+
+**BLOCKED** — zero failures, but one or more tests are skipped due to documented external dependencies (missing `data-testid` attributes, unavailable test data, unconfirmed product behavior) or an approved skip directive carried from Stage 02. Every skip must name its specific blocker in `summary.md`. BLOCKED is not a failure state, but **it does not promote**: Stage 05's gate is PASSED-only, with no waivers. Blocked work waits until the dependency is delivered and Stage 04 re-runs clean.
+
+When a verdict is BLOCKED on missing `data-testid` attributes, the stage must produce `stages/04-generate-tests/output/<TICKET-ID>/dev-request.txt` listing the exact attributes needed and which tests each unblocks, written so it can be pasted directly into a ticket for the dev team.
+
+**FAILED** — one or more tests fail. Fix the failures and re-run. Stage 05 is blocked.
+
+The distinction matters because BLOCKED and FAILED call for different actions by different people: FAILED is ours to fix, BLOCKED is somebody else's to deliver. Collapsing them into one state loses that, and a suite reported as failing when it is actually waiting on a dependency gets debugged instead of escalated.
 
 End the stage with a conversation message that states:
 
-- **Verdict:** PASSED or FAILED
+- **Verdict:** PASSED / BLOCKED / FAILED
 - **Counts:** X passed / Y failed / Z skipped
 - **Report:** `stages/04-generate-tests/output/<TICKET-ID>/report.html`
 - **Next step:**
   - All green → "Say **proceed** to move to Stage 05."
+  - BLOCKED → "Deliver the items in `dev-request.txt`, then say **re-run Stage 04 for \<TICKET-ID\>** to re-execute."
   - Any failure → "Fix the failing tests, then say **re-run Stage 04 for \<TICKET-ID\>** to re-execute without regenerating."
 
 ### What "re-run Stage 04 for \<TICKET-ID\>" means
@@ -310,6 +359,7 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 | Plain-text summary | `stages/04-generate-tests/output/<TICKET-ID>/summary.md` | Always |
 | Failure screenshots | `stages/04-generate-tests/output/<TICKET-ID>/failed/TC-<n>.png` | One per failing test |
 | Prior run archive | `stages/04-generate-tests/output/<TICKET-ID>/previous-run/` | When a prior run existed |
+| Dev attribute request | `stages/04-generate-tests/output/<TICKET-ID>/dev-request.txt` | When the verdict is BLOCKED on missing `data-testid` attributes |
 
 ---
 
@@ -318,6 +368,10 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 - Approval block contains `Proceed to Stage 04: YES` — confirmed at stage entry.
 - Product field was read from the approved test cases, never inferred from the ticket ID prefix.
 - Re-run rotation was applied before writing fresh report output (if a prior run existed).
+- Every definition marked skipped in the approval was generated as a skipped test — counted against the approval, not assumed. No skipped definition was generated as active.
+- Every generated skipped test carries its reason both as a comment and inside the `test.skip()` call.
+- The skipped-test count in the generated spec equals the skip count in the approval.
+- A run whose only non-passing tests are skips was reported BLOCKED, never FAILED, and never PASSED.
 
 ---
 
@@ -326,7 +380,8 @@ Re-run = execute the already-parked test files (STEP 2 onward), with the previou
 - Every TC from the approval file has a corresponding `test()` block — count them.
 - No test uses a raw selector (`page.locator('.some-class')`) — all interactions go through page object methods.
 - Every `test()` contains at least one `expect()`.
-- No test is skipped without a `// TODO:` comment.
+- No test is skipped without a reason string in both the comment above it and inside the `test.skip()` call — see SKIPPED TEST GENERATION. A skip whose reason lives only in a comment is malformed.
+- No skipped test has an empty or stubbed body.
 - Every `browser.newContext()` is matched with `await context.close()` at the end of the test.
 - Base URL, credentials, and device configs come from `_config/<product>.md` via `process.env`, not hardcoded.
 - Page object file names match `{PageName}Page.ts` exactly.
