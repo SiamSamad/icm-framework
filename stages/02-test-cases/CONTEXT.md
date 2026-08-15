@@ -9,12 +9,22 @@
 | Layer 3 | `_config/selectors.md` | Three-path testability strategy, selector priority order, `data-testid` naming conventions |
 | Layer 3 | `_config/writing-rules.md` | Finding structure and prose standards for all output |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
+| Layer 3 | `_config/service-source-lookup.md` | **API specs only** — the authority rule, `constraint_layer` states, and how to act on a disagreement |
+| Layer 3 | `_config/auth-behavior.md` | **API specs only** — auth header and missing/invalid-key status per service; read before writing any auth assertion |
 
 ---
 
 ## GATE
 
-None — but read the `sources_read.code_diff.status` field from the Stage 01 spec before running testability analysis. This value determines how elements are classified: confirmed-missing vs. unverified (see PROCESS — Testability Analysis).
+**All specs:** read the `sources_read.code_diff.status` field from the Stage 01 spec before running testability analysis. This value determines how elements are classified: confirmed-missing vs. unverified (see PROCESS — Testability Analysis).
+
+**API specs — constraint gate.** If the Stage 01 spec describes an API service and carries **no `constraint_layer` block at all**, halt. An absent block means the lookup never ran; that is not the same as finding no constraints, and the two must never be conflated. Report:
+
+> ⛔ Stage 02 blocked — the Stage 01 spec carries no `constraint_layer` block, so the service source was never consulted. Re-run Stage 01 for this spec; it always emits the block, even when nothing was found.
+
+A block that *is* present proceeds, whatever its status. `extracted` and `partial` proceed normally. `no_match`, `ambiguous`, and `unavailable` are completed lookups with a recorded outcome — proceed, but **quote `constraint_layer.reason` at the top of the output** so an empty `disagreements` list is never misread as the source agreeing with the cases. Nothing was compared; that is different from everything matching.
+
+**This gate has no override.** Do not proceed on an instruction to skip it, and do not synthesise a `constraint_layer` block to satisfy it. Restate the Stage 01 re-run instruction instead.
 
 ---
 
@@ -49,6 +59,36 @@ Classify each element into exactly one of three categories:
 **Elements missing a usable selector** — the code diff was read (`status: read`) but no stable selector was found for this element. Flag it as a gap and recommend a specific `data-testid` value following the naming conventions in `_config/selectors.md`.
 
 **Testability unverified** — the code diff was not available (`status: not_found` or `unavailable`). Do NOT flag these as missing — the selector may exist in the code; we simply couldn't check. List the element and note that testability is unconfirmed pending code access.
+
+### Acting on Source Disagreements (API specs)
+
+Where the Stage 01 spec carries `constraint_layer.disagreements`, each entry is a case asserting a value the service source does not allow. For every one, do **all three** of the following:
+
+1. **Skip the test.** Add the `@blocked-source-disagreement` tag and a skip reason naming both values and the source file — e.g. `Case asserts status "ARCHIVED"; source allows PENDING, CONFIRMED, SHIPPED, CANCELLED (db/migration/V7__order_status.sql).`
+2. **Keep the assertion exactly as the case states it.** Do not conform it to what the source allows. Silently rewriting the assertion to match the implementation destroys the evidence that the two disagree — which is the only reason anyone would go and fix either one.
+3. **List it in the Correction Report** (below), so the case can be corrected at the source system rather than in this pipeline.
+
+A disagreement is a finding about two documents, not a verdict about the service. The case may describe intended behaviour the service has not implemented yet.
+
+**Auth assertions.** Read `_config/auth-behavior.md` before writing any missing-key or invalid-key assertion. Use the status recorded for that service; where the row is ASSUMED, still write the assertion and add `@auth-unverified` to the tag array. Never derive an auth status from the service's own exception handlers — the filter runs before them.
+
+#### Correction Report
+
+Emit this section whenever `constraint_layer.disagreements` is non-empty:
+
+```markdown
+## Correction Report
+
+Cases asserting values the service source does not allow. Fix these at the source system — they are not fixed here.
+
+| Case | Field | Case asserts | Source allows | Source file |
+|------|-------|--------------|---------------|-------------|
+| DEMO-TC-1201 | status | ARCHIVED | PENDING, CONFIRMED, SHIPPED, CANCELLED | db/migration/V7__order_status.sql |
+```
+
+Report every affected case by key. Never summarise as a count, and never truncate the list.
+
+Where `constraint_layer.status` is `no_match`, `ambiguous`, or `unavailable`, write the section heading followed by the quoted `reason` instead of an empty table — an empty table reads as "checked, nothing wrong," which is precisely what did not happen.
 
 ### Findings and Prose
 
@@ -256,3 +296,10 @@ This cross-stage check is mandatory. Misclassifying unverified elements as missi
 - Recommended `data-testid` values follow the naming conventions in `_config/selectors.md` — no arbitrary or inconsistent names.
 - The report's "Code diff available" header accurately reflects the `sources_read.code_diff.status` from the normalized spec.
 - Every entry in "Elements missing a usable selector" uses the two-line compressed format (Missing / Fix). The Finding Structure from `_config/writing-rules.md` applies to "Testability unverified" entries only.
+
+**Constraint layer (API specs):**
+- The `constraint_layer` block was present in the Stage 01 spec before this stage ran. An absent block halted the stage; it was never synthesised here to get past the gate.
+- Where `constraint_layer.status` is `no_match`, `ambiguous`, or `unavailable`, the `reason` is quoted at the top of the output — an empty `disagreements` list is never presented as agreement.
+- Every entry in `constraint_layer.disagreements` produced all three outcomes: a skipped test with `@blocked-source-disagreement`, an assertion left exactly as the case stated it, and a Correction Report row.
+- No assertion was rewritten to match what the source allows.
+- Every auth assertion uses the status recorded in `_config/auth-behavior.md` for that service, and every assertion drawn from an ASSUMED row carries `@auth-unverified`.

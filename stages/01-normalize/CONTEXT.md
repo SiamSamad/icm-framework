@@ -23,6 +23,8 @@ Mode B accepts two input paths. Either satisfies the gate; both may be supplied 
 | Layer 4 | Service OpenAPI spec (when provided) | Supplement to the endpoint inventory for auth scheme and payload detail |
 | Layer 3 | `_config/api-intake.md` | Shape recognition, canonical field mapping, parsing rules, the TMT adapter contract, combination rules, extended spec schema, held reason reference |
 | Layer 3 | `_config/source-freshness.md` | Path B2 only — what to fingerprint, how, and where the hashes are recorded |
+| Layer 3 | `_config/service-source-lookup.md` | API services — repository resolution, the six constraint classes to extract, the source-versus-case authority rule, and the `constraint_layer` states |
+| Layer 3 | `_config/auth-behavior.md` | Per-service auth header and missing/invalid-key status codes, with VERIFIED/ASSUMED provenance |
 | Layer 3 | `_config/writing-rules.md` | Finding structure and prose standards for all output |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
 
@@ -338,6 +340,20 @@ Both paths converge at step 5. When both are supplied, parse each into `cases` a
 
 10. **Record environment variables** in `environment_config` — always a base URL and the auth credential named by the spec's auth scheme, plus any data-dependency IDs the payload needs. No values are hardcoded into cases or tests. State in `porting_note` that switching environments requires changing only these variables.
 
+11. **Extract the service constraint layer.** Load `_config/service-source-lookup.md` and follow it. Resolve the service repository by **searching** the configured source group (`source_group` in `_config/<product>.md`) for a project matching the service name — never from a stored mapping, so a new service works without anyone editing a config file first. Record which repository was found, `match_method`, and the `ref` actually read.
+
+    Extract the six constraint classes — DB check constraints, enum declarations, validation annotations, cascade rules, state transitions, and auth — recording every finding with a `source_file` in the source tree. Never record a build-output path (`target/`, `build/`, `dist/`): that is generated and can be stale.
+
+    For auth, cross-check against `_config/auth-behavior.md`. A verified probe recorded there outranks an unread shared library; where the filter is external, record `null` status codes with a note naming the library rather than inferring them from the service's own exception handlers.
+
+    Then compare each extracted valid set against what the `cases` assert, and record every value-level conflict under `constraint_layer.disagreements`, naming both sides.
+
+    **The service source is authoritative for what values are valid. The cases are authoritative for what should be tested.** When they disagree on a value, the source wins and the case is reported for correction.
+
+    Do not resolve a disagreement here, do not edit a case to match the source, and do not mark a case skipped — Stage 02 acts on it, and the correction is reported back to the test management tool.
+
+    **The block is always emitted.** No repository match is `status: no_match`; several matches is `ambiguous`; a repository that could not be read — or no configured `source_group` — is `unavailable`. Each records its reason and is a stated gap, not a silent skip. Omitting the block entirely means the lookup never ran, which reads downstream as UNVERIFIED and halts Stage 02 — never leave it out to signal that nothing was found.
+
 ### Intake Summary format (Mode B)
 
 ```
@@ -369,7 +385,57 @@ Set `ticket_id` in the spec to the same string as the folder name — downstream
 
 ### Spec output
 
-Emit the standard spec YAML extended with `api_contract`, `cases`, `coverage_matrix`, `open_questions`, `data_dependencies`, `environment_config`, and `source_provenance` as defined in `_config/api-intake.md` → Extended Spec Schema. Write to the path given under **Output location** above.
+Emit the standard spec YAML extended with `api_contract`, `cases`, `coverage_matrix`, `open_questions`, `data_dependencies`, `environment_config`, `source_provenance`, and `constraint_layer` as defined in `_config/api-intake.md` → Extended Spec Schema and in the `constraint_layer` schema below. Write to the path given under **Output location** above.
+
+**`constraint_layer` schema** — see `_config/service-source-lookup.md` for the extraction rules and state definitions:
+
+```yaml
+constraint_layer:
+  status: ""              # extracted | partial | no_match | ambiguous | unavailable
+  repo: ""                # e.g. <source-group>/order-service
+  ref: ""                 # branch or commit actually read — not just the branch name
+  match_method: ""        # exact_path | normalised | substring
+  match_candidates: []    # every project considered; required when status is ambiguous
+  searched_group: ""      # the configured source_group
+  searched_for: ""        # the service name the search used
+  extracted_at: ""
+  reason: ""              # required for partial, no_match, ambiguous, unavailable
+  enums:
+    - name: ""            # e.g. CHK_ORDER_STATUS, OrderStatus
+      values: []
+      source_kind: ""     # db_check_constraint | code_enum | validation_annotation
+      source_file: ""
+  required_fields:
+    - field: ""
+      rule: ""            # e.g. "not null", "max length 100"
+      source_file: ""
+  cascade_rules:
+    - relationship: ""
+      on_delete: ""
+      source_file: ""
+  transitions:
+    - from: ""
+      to: []
+      source_file: ""
+  auth:
+    header: ""
+    missing_key_status: null   # null when the filter lives in a shared library
+    invalid_key_status: null
+    source_file: ""
+    note: ""
+  internal_disagreements:      # one part of the source disagreeing with another
+    - subject: ""
+      sources: []              # each: value set plus source_file
+      note: ""
+  disagreements:               # a case asserting a value the source does not allow
+    - case: ""
+      step: 0
+      field: ""
+      case_asserts: ""
+      source_allows: []
+      source_file: ""
+      note: ""
+```
 
 ### Baseline sharing check (Path B2 only) — run immediately after writing `spec.md`
 
@@ -481,3 +547,13 @@ Mode B extends the spec with `api_contract`, `cases`, `coverage_matrix`, `open_q
 - **(Path B2)** Every entry in `known_defects` names the bug reference where the source stated one, and states both the expectation and the observed behaviour.
 - **(Path B2)** The hasher was fed raw fetched values — captured before markup normalisation and before known-defect splitting — so the fingerprints stay comparable to any later fetch.
 - **(Path B2)** No excluded field (summary, description, priority, status, labels, folder, version) reached the hasher input.
+- **(API services)** `constraint_layer` is present with a `status`. The block is never omitted — an absent block means the lookup never ran and halts Stage 02.
+- **(API services)** The repository was resolved by searching the configured source group, never from a stored service-to-repo mapping.
+- **(API services)** `match_method` and `ref` are recorded, so a later reader can judge whether the right repository was read and re-check the findings against the same revision.
+- **(API services)** `status: no_match` records the group searched and the name searched for; `ambiguous` lists every candidate and picks none.
+- **(API services)** `reason` is non-empty for `partial`, `no_match`, `ambiguous` and `unavailable`.
+- **(API services)** Every finding carries a `source_file` in the source tree. No build-output path (`target/`, `build/`, `dist/`) is recorded anywhere in the block.
+- **(API services)** Auth status codes are `null` with a note naming the library where the filter is external — never inferred from the service's own exception handlers.
+- **(API services)** Every case value falling outside an extracted valid set appears in `constraint_layer.disagreements` naming both the asserted value and the allowed set, by case key. None was resolved, narrowed, dropped, or skipped.
+- **(API services)** Where nothing could be extracted, `disagreements` is empty and `reason` says so — an empty list is never left to be misread as the cases agreeing.
+- **(API services)** No service repository was written to.

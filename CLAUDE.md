@@ -126,6 +126,8 @@ _config/
   writing-rules.md     ← finding structure and prose standards shared by all stages
   api-intake.md        ← Mode B: shape recognition, canonical field mapping, TMT adapter contract
   source-freshness.md  ← content fingerprinting, drift comparison, delta report, baseline sharing
+  service-source-lookup.md ← constraint extraction from service source; the authority rule
+  auth-behavior.md     ← per-service auth header and status codes, VERIFIED/ASSUMED provenance
 _tools/                ← deterministic helper scripts (Node, zero dependencies)
   case-hash.mjs        ← per-case content fingerprints; the only hash implementation
   baseline-tracked.mjs ← keeps freshness baselines out of .gitignore; self-fixes with --add
