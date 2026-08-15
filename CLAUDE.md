@@ -27,14 +27,18 @@ Work through stages in order. Do not skip stages. Each stage's output becomes th
 ### Stage 01 — Normalize
 
 ```
-Input:  ticket via tracker integration (default), fetched by ticket ID
-        inputs/<TICKET-ID>.md (fallback, if MCP unavailable or ticket not found)
+Mode A input:  ticket via tracker integration (default), fetched by ticket ID
+               inputs/<TICKET-ID>.md (fallback, if MCP unavailable or ticket not found)
+Mode B input:  tabular case/endpoint exports (Path B1), and/or a live TMT folder ID
+               or case key (Path B2), plus optional parent ticket and OpenAPI spec
 Prompt: stages/01-normalize/CONTEXT.md
 Output: stages/01-normalize/output/<TICKET-ID>/spec.md
         stages/01-normalize/output/<TICKET-ID>/report.html
 ```
 
-Given a ticket ID, fetch it from tracker via the tracker integration first. Only fall back to `inputs/<TICKET-ID>.md` if the MCP is unavailable or the ticket can't be found there. Read the prompt, then read the ticket. Emit the normalized spec to the output directory. The spec must be YAML-fenced and follow the schema defined in the prompt.
+**Mode A — Ticket Intake (default).** Given a ticket ID, fetch it from the tracker via the tracker integration first. Only fall back to `inputs/<TICKET-ID>.md` if the MCP is unavailable or the ticket can't be found there. Read the prompt, then read the ticket. Emit the normalized spec to the output directory. The spec must be YAML-fenced and follow the schema defined in the prompt.
+
+**Mode B — API Case Intake.** Used when the API test cases already exist — in a spreadsheet (Path B1) or in a test management tool (Path B2). Mode B parses or fetches them into one canonical `cases` inventory, plus an `api_contract` and a `coverage_matrix`. Path B2 additionally fingerprints every case for drift detection. See `_config/api-intake.md`; a folder-scoped Path B2 fetch names its output folder after the service, or `TMT-<folderId>` when the folder spans several.
 
 ### Stage 02 — Test Cases
 
@@ -120,6 +124,7 @@ _config/
   selectors.md         ← selector quality standard, three-path testability strategy, data-testid naming
   report-style.md      ← HTML report conventions shared by all stages
   writing-rules.md     ← finding structure and prose standards shared by all stages
+  api-intake.md        ← Mode B: shape recognition, canonical field mapping, TMT adapter contract
   source-freshness.md  ← content fingerprinting, drift comparison, delta report, baseline sharing
 _tools/                ← deterministic helper scripts (Node, zero dependencies)
   case-hash.mjs        ← per-case content fingerprints; the only hash implementation
