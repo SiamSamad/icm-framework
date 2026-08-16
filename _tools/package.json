@@ -1,0 +1,13 @@
+{
+  "name": "icm-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic helper scripts for the ICM framework. Rules that must give the same answer every time live here as code, not as judgement.",
+  "type": "module",
+  "scripts": {
+    "register": "node case-register.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
+}
