@@ -13,6 +13,7 @@
 | Layer 3 | `_config/<product>.md` | Product config |
 | Layer 3 | `_config/api-test-generation.md` | API promotions — env module protocol and routing this stage must preserve |
 | Layer 3 | `_config/source-freshness.md` | Live-TMT services — context for the removal check |
+| Layer 3 | `_config/case-register.md` | **No vendor TMT only** — the Automated flip at record-keeping |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
 
 ---
@@ -254,8 +255,20 @@ After the MR is created, ask me two separate yes/no questions. Do not bundle the
 **a. TMS:**
 > "Update TMS for this ticket now?"
 
-- If yes: tell me it is not implemented yet. Record outcome as `TMS: not yet implemented`.
-- If no: record outcome as `TMS: skipped`.
+The answer depends on which adapter is active for this product — see `_config/case-register.md`.
+
+- **A vendor test management tool is connected.** If yes: tell me it is not implemented yet. Record outcome as `TMS: not yet implemented`. If no: record outcome as `TMS: skipped`.
+- **No vendor tool — the local case register is the system of record.** If yes: flip each promoted case to `Automated`, recording where its test landed:
+
+  ```
+  node _tools/case-register.mjs update-status <product> <case-id> Automated --spec <promoted spec path>
+  ```
+
+  One call per case. The spec path is the promoted destination from the Promoted Files table, not the scratch path. Record outcome as `TMS: register updated — <N> case(s) marked Automated`. If no: record outcome as `TMS: skipped`.
+
+  Exit `1` is a decision (already `Automated`, unknown ID) — report it and ask; the promotion itself already succeeded, so never re-run the promotion to resolve a register question. Exit `2` halts the record-keeping step only: report that the register could not be updated and name the cases still to flip, so the MR is not reported as fully closed out when its record is missing.
+
+  **On an unvalidated promotion, do not flip to `Automated`.** The tests have not run. Offer "pending validation" as the record-keeping outcome and leave the cases `Approved` — a case recorded as automated retires a manual test that nothing has replaced.
 
 **b. Tracker:**
 > "Post the summary comment to the ticket now?"
@@ -441,3 +454,6 @@ Until both are confirmed, the ticket is in-flight. When cleanup is requested for
 - Promotion summary reflects the actual audit outcomes (created / reused / merged) accurately.
 - An unvalidated promotion happened only on an explicit request for one, only where Stage 04 produced no verdict because the environment was unreachable, and never as a route past BLOCKED or FAILED.
 - An unvalidated promotion carries the `test(unvalidated):` commit prefix, an `[UNVALIDATED]` MR title, and a do-not-merge body — and record-keeping offered "pending validation", never "automated".
+- **(No vendor TMT)** Cases were flipped to `Automated` only on an explicit yes, only via the tool, and only with `--spec` naming the **promoted** destination path rather than the scratch path.
+- **(No vendor TMT)** No case was flipped to `Automated` on an unvalidated promotion.
+- **(No vendor TMT)** A register write that could not complete was reported with the cases still to flip, rather than the MR being reported as fully closed out.

@@ -7,6 +7,7 @@
 | Layer 4 | `stages/02-test-cases/output/<TICKET-ID>/test-cases.md` | Test cases to review |
 | Layer 4 | `stages/01-normalize/output/<TICKET-ID>/spec.md` | `source_provenance` — the fingerprints this stage checks against |
 | Layer 3 | `_config/<product>.md` | Product context for informed review |
+| Layer 3 | `_config/case-register.md` | **No vendor TMT only** — status model and the Approved flip |
 | Layer 3 | `_config/source-freshness.md` | Live-TMT specs only — comparison procedure and delta report format |
 
 ---
@@ -138,6 +139,22 @@ The approval is a copy of the reviewed content plus an approval block — not a 
 
 Where the Stage 02 output carries a **Skip Carry-Forward** table, copy it across too, including any row marked ORPHANED. An orphaned skip is an open question for the reviewer, not a formatting artefact to tidy away.
 
+### Local Case Register
+
+**Only when no vendor test management tool is connected** (see `_config/case-register.md`).
+
+After `approved.md` is written, flip each approved case to `Approved`:
+
+```
+node _tools/case-register.mjs update-status <product> <case-id> Approved
+```
+
+One call per case. Report the IDs flipped.
+
+- **A skip directive does not change register status.** A skipped test is fully specified and was approved with a known external blocker; it stays whatever it was and moves to `Approved` like any other approved case. Do not demote it, and do not skip flipping it — the reviewer approved it.
+- **A rejected approval flips nothing.** `REJECTED` sends the ticket back to Stage 02; the cases stay `Draft`.
+- Exit `1` (already `Approved`, or an unknown ID) is a decision — report it and ask. Exit `2` halts: do not report the approval as complete if the record of it could not be written.
+
 ### What Happens Next
 
 Once `stages/03-approve/output/<TICKET-ID>/approved.md` exists with `Proceed to Stage 04: YES`, hand that file to Claude along with `stages/04-generate-tests/CONTEXT.md` and `_config/<product>.md` to generate the Playwright tests.
@@ -182,3 +199,5 @@ Additionally, before the approval is reported as written:
 - Any skip removed during approval is named under **Changes made** — never removed silently.
 - The skip counts in `test-cases.md` and `approved.md` were compared, not assumed equal.
 - A Skip Carry-Forward table in the Stage 02 output was copied across, ORPHANED rows included.
+- **(No vendor TMT)** Every approved case was flipped to `Approved` in the register via the tool, skipped cases included — a skip is an approved test with a blocker, not a withheld approval.
+- **(No vendor TMT)** A `REJECTED` approval flipped nothing; the cases stayed `Draft`.

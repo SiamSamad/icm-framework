@@ -9,6 +9,7 @@
 | Layer 3 | `_config/selectors.md` | Three-path testability strategy, selector priority order, `data-testid` naming conventions |
 | Layer 3 | `_config/writing-rules.md` | Finding structure and prose standards for all output |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
+| Layer 3 | `_config/case-register.md` | **No vendor TMT only** — the local case register: schema, ID convention, and which stage writes what |
 | Layer 3 | `_config/api-test-mapping.md` | **API specs only** — test definition schema, tag naming, independence rule, output document structure |
 | Layer 3 | `_config/service-source-lookup.md` | **API specs only** — the authority rule, `constraint_layer` states, and how to act on a disagreement |
 | Layer 3 | `_config/auth-behavior.md` | **API specs only** — auth header and missing/invalid-key status per service; read before writing any auth assertion |
@@ -302,6 +303,28 @@ Or tell me what needs to change and I'll update and regenerate.
 ---
 ```
 
+### Append to the Local Case Register
+
+**Only when no vendor test management tool is connected.** If one is, it is the system of record and the register is not used at all — do not keep it in sync as a shadow copy. See `_config/case-register.md`.
+
+After `test-cases.md` is written, append this run's cases to `registry/<product>.xlsx` as `Draft`:
+
+```
+node _tools/case-register.mjs append <product> <cases.json>
+```
+
+Build `<cases.json>` from the test cases just written — one object per case with `title`, `screen` (or `service`), `type`, `priority`, `preconditions`, `steps`, `test_data`, `expected_result`, and `source_ticket`. Do not supply a `case_id`; the tool issues the next sequential ID.
+
+**Never edit the workbook directly.** Every change goes through the tool, so the ID sequence, the Summary counts, and the column contract hold.
+
+| Exit | What to do |
+|------|-----------|
+| `0` | Report the IDs the tool issued, then continue |
+| `1` | A decision, not an error — usually a duplicate case ID. Report what it said and ask. Nothing was written, so nothing is half-appended |
+| `2` | **Halt.** The register could not be written. Do not proceed to Stage 03 with cases the record of which does not exist |
+
+If the register does not exist yet for this product, say so and give the one-line fix (`node _tools/case-register.mjs init <product> --prefix <PREFIX>`) rather than creating it silently — the prefix is a decision that outlives the run.
+
 ### Dev Request Block
 
 After generating the test cases and testability report, check if any elements landed in the "Elements missing a usable selector" category.
@@ -374,6 +397,12 @@ This cross-stage check is mandatory. Misclassifying unverified elements as missi
 - Every open assertion has a non-empty `open_reason` and appears in Testability Gaps.
 - `service_tag` was derived from the spec, and never defaulted to the product tag.
 - Overlap detection compared method, path, and assertions — not names — and skipped nothing automatically.
+
+**Local case register (no vendor TMT only):**
+- The register was appended to via `_tools/case-register.mjs`, never by editing the workbook directly.
+- No `case_id` was supplied on append — the tool issued every ID.
+- Exit `1` was reported and asked about, never retried blindly; exit `2` halted the stage rather than handing Stage 03 cases with no record.
+- Every case written to `test-cases.md` appears in the register, and the IDs the tool issued were reported back.
 
 **Skip directives:**
 - Every skipped test has both a `Skip` row and a non-empty `Skip reason:` paragraph — never one without the other.

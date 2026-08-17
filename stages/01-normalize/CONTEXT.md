@@ -303,7 +303,7 @@ You are a QA Analyst. Your job is to turn an existing body of API test cases —
 
 Mode B has two input paths that produce the same `cases` inventory:
 
-- **Path B1 — tabular files.** Steps 1–4 parse xlsx / csv / tab-separated exports.
+- **Path B1 — tabular files.** Steps 1–4 parse xlsx / csv / tab-separated exports. **A local case register workbook (`registry/<product>.xlsx`) is a valid Path B1 source** — its columns map onto the canonical Shape 1 fields by design, so it parses with no special-casing. Export it first with `node _tools/case-register.mjs export <product> <out.json>`, or point the parser at the workbook directly. See `_config/case-register.md`.
 - **Path B2 — live TMT fetch.** Step 0 pulls cases from the tool through its adapter. Follow `_config/api-intake.md` → Live TMT Intake exactly; its adapter contract records the failure modes that corrupt a fetch without raising an error.
 
 Both paths converge at step 5. When both are supplied, parse each into `cases` and dedup by case key, reporting every duplicate.
