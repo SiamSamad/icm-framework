@@ -129,14 +129,19 @@ _config/
   report-style.md      ← HTML report conventions shared by all stages
   writing-rules.md     ← finding structure and prose standards shared by all stages
   api-intake.md        ← Mode B: shape recognition, canonical field mapping, TMT adapter contract
+  case-register.md     ← the built-in TMT adapter: register schema, ID convention, status model
   source-freshness.md  ← content fingerprinting, drift comparison, delta report, baseline sharing
   service-source-lookup.md ← constraint extraction from service source; the authority rule
   auth-behavior.md     ← per-service auth header and status codes, VERIFIED/ASSUMED provenance
   api-test-mapping.md  ← Stage 02: test definition schema, tag naming, output document structure
   api-test-generation.md ← Stage 04: API routing, request-fixture template, env module protocol
-_tools/                ← deterministic helper scripts (Node, zero dependencies)
+_tools/                ← deterministic helper scripts (Node)
   case-hash.mjs        ← per-case content fingerprints; the only hash implementation
   baseline-tracked.mjs ← keeps freshness baselines out of .gitignore; self-fixes with --add
+  case-register.mjs    ← the local case register CLI (init/append/update-status/export)
+  package.json         ← exceljs, the register's only dependency
+registry/              ← local case registers — TRACKED, not scratch
+  <product>.xlsx       ← the system of record when no vendor TMT is connected
 .claude/
   commands/
     drift-check.md     ← /drift-check — read-only source-drift report for one baseline
@@ -379,6 +384,12 @@ Example listing (scope: Both):
 > - `stages/01-normalize/output/Order-Service/` — tmt-live, folder TMT-4102, 12 cases, fetched 2026-08-05
 → State plainly that the only way back is a Stage 01 re-run, and that any drift occurring between now and that re-run becomes undetectable. Wait for confirmation before deleting.
 → After a full reset, remove the corresponding negation lines from the baseline block in `.gitignore`.
+
+---
+
+### `registry/` Is Never Cleaned
+
+`registry/<product>.xlsx` is not scratch and no cleanup scope touches it. It is the only durable record of what has been approved and what has been automated, and — unlike stage output — re-running a stage does not reproduce it. Cases are removed from a register by a deliberate, reviewed edit through the tool, never by a cleanup command.
 
 ---
 

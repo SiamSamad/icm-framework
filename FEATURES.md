@@ -44,6 +44,20 @@ Status: ✅ in baseline · 📐 design/extension point · 🔭 roadmap
 - ✅ `/drift-check` slash command — read-only, for promoted services that never re-enter Stage 03
 - ✅ Baseline protection in cleanup and `.gitignore`, with `_tools/baseline-tracked.mjs` self-healing the ignore rule and verifying git agrees before claiming success
 
+## Test Management Tool Slot
+- ✅ The TMT is a pluggable slot: the framework owns the intake and write-back contract, any vendor (e.g., TestRail, Zephyr, QMetry, Xray) is an adapter behind it
+- ✅ **Local case register** — the built-in zero-dependency adapter: a committed `registry/<product>.xlsx` that IS the system of record when no vendor tool is connected
+- ✅ `_tools/case-register.mjs` — deterministic CLI (init / append / update-status / export); no agent writes a spreadsheet freehand
+- ✅ Exit contract 0/1/2 matching `baseline-tracked.mjs`; a rejected batch leaves the register untouched rather than half-appended
+- ✅ Sequential, never-reused case IDs issued by the tool from a prefix stored in the workbook itself
+- ✅ Status model Draft → Approved → Automated, advanced one stage at a time as the pipeline earns it; `Automated` refused without a spec path
+- ✅ A skip directive does not change register status — a skipped case is approved with a blocker, not a withheld approval
+- ✅ Summary sheet counts recomputed on every write, never incremented, so a hand edit in Excel cannot leave them drifting
+- ✅ Round-trip: the register exports as canonical Mode B cases and re-reads as a Shape 1 tabular source with no special-casing
+- ✅ Register-sourced cases fingerprint with `case-hash.mjs` exactly as vendor-sourced ones do; status is excluded, so advancing a case never reads as drift
+- ✅ `registry/` is tracked and exempt from every cleanup scope
+- 🔭 Vendor adapters behind the same contract (the live-fetch path is specified; no vendor call is implemented)
+
 ## Service Source Constraints
 - ✅ Authority rule: the source decides what is valid, the cases decide what is tested; disagreements are recorded, never silently resolved
 - ✅ Repository resolution by search against a configured group, never a stored map, with `match_method` and `ref` recorded
@@ -77,6 +91,7 @@ Status: ✅ in baseline · 📐 design/extension point · 🔭 roadmap
 - ✅ Skip reconciliation between Stage 02 output and the written approval, halting on any unexplained difference
 - ✅ Stage 05 hard all-green gate with refusal messages; BLOCKED does not promote and there are no waivers
 - ✅ Ask-first record-keeping (TMS + ticket comment) — separate questions, never bundled, never auto
+- ✅ Record-keeping has a real no-vendor path: promoted cases flip to `Automated` in the local register with the promoted spec path, replacing the "not implemented yet" dead end
 
 ## Generation & Run — Stage 04
 - ✅ POM standards: locators private, methods public, no expect() in page objects, is*/getText conventions
@@ -155,7 +170,7 @@ Status: ✅ in baseline · 📐 design/extension point · 🔭 roadmap
 ## Roadmap 🔭
 - Multi-model LLM-as-Judge validation (second model critiques Stage 02 output)
 - CI triggers: pipeline on ticket status change; @smoke per MR, @regression nightly
-- TMS write-back implementation (stub exists — asks, returns "not implemented")
+- TMS write-back to a *vendor* tool (the local case register already covers the no-vendor case end to end)
 - Smart smoke-suite management (SMOKE-INDEX, add/replace/deprecate scoring)
 - Change-request flow through the pipeline
 - A working mobile runner behind the scaffolded `maestro/` bucket — flow generation rules, device config, and Stage 04 wiring

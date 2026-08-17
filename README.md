@@ -50,6 +50,30 @@ The tool itself is pluggable. The framework owns the contract — fetch by folde
 
 ---
 
+## The Test Management Tool Slot
+
+Most teams keep test cases in a vendor tool. Some keep them in a spreadsheet. Some have nothing yet. The framework treats that slot as **pluggable** rather than assuming any of the three.
+
+| Adapter | System of record |
+|---------|------------------|
+| A vendor tool — TestRail, Zephyr, QMetry, Xray | The vendor tool. Cases are fetched live and fingerprinted for drift. |
+| **The built-in local case register** | `registry/<product>.xlsx`, committed to this repo. |
+
+The **local case register** is the zero-dependency default: an Excel workbook that *is* the system of record when no vendor tool is connected. It exists so the pipeline is complete out of the box rather than ending at a record-keeping step that answers "not implemented yet."
+
+```
+node _tools/case-register.mjs init example-product --prefix EX
+node _tools/case-register.mjs append example-product cases.json
+node _tools/case-register.mjs update-status example-product EX-TC-0001 Approved
+node _tools/case-register.mjs export example-product cases.json
+```
+
+Stage 02 appends new cases as `Draft`, Stage 03 flips approved ones to `Approved`, and Stage 05 marks promoted ones `Automated` with the path to the test that covers them. Nothing writes to the workbook by hand — every change goes through the tool, so IDs stay sequential and the counts stay honest.
+
+The register's columns map onto the same canonical case fields a vendor fetch produces, so it round-trips: export it and Stage 01 reads it back as an ordinary tabular case source, and `_tools/case-hash.mjs` fingerprints it exactly as it fingerprints a vendor-sourced case. It is a first-class source, not a side file. See `_config/case-register.md`.
+
+---
+
 ## Test Tooling Buckets
 
 The top level names the **test tool**; surfaces and products nest beneath it. A test is routed by the tool that executes it, never by the ticket prefix.
@@ -76,6 +100,7 @@ A new product adds a folder inside an existing bucket. A new **tool** adds a buc
 | `_config/<product>.md` | Per-product settings: base URLs, test accounts, selector conventions |
 | `_config/*.md` | Shared reference: selectors, report style, writing rules, source freshness, API intake/mapping/generation, constraint lookup, auth behaviour |
 | `_tools/*.mjs` | Deterministic helpers — content fingerprints and baseline protection, called by the stages rather than re-judged |
+| `registry/<product>.xlsx` | **Tracked, never scratch** — the local case register: the system of record when no vendor TMT is connected |
 | `_archive/` | Dated snapshots of what cannot be regenerated: approvals, promotion records, run evidence |
 | `CLAUDE.md` | Operational runbook — exact filenames, pipeline rules, cleanup commands |
 | `AGENTS.md` | Model selection guide — which Claude model to use for which ticket type |
