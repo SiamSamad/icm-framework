@@ -21,6 +21,12 @@ _Declare one. Stage 04 and Stage 05 read this to decide where a spec lands._
 - **Tier-based (default)** — specs route to `tests/smoke/`, `tests/regression/`, or `tests/e2e/` by tag.
 - **Page-based** — specs route to one folder per page area. If you choose this, fill in Key Flows and Routes below; that table *is* the folder list.
 
+## Case ID prefix
+_The stem for case IDs in the local case register, e.g. `EX` → `EX-TC-0001`._
+_Recorded here so a human can find it without opening the workbook; the workbook's
+Summary sheet is what the tool actually reads. Only relevant when no vendor test
+management tool is connected — see [`_config/case-register.md`](./case-register.md)._
+
 ## Key roles & test accounts
 _Which user roles matter, and which shared test account(s) to use. Names and roles here —
 credentials in `.env`._
