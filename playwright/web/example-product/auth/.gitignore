@@ -1,0 +1,6 @@
+# Saved authenticated session written by the setup project.
+# Co-located with the product it belongs to, so the session file is ignored by the
+# same move that creates the product bucket — a repo-root rule is easy to forget
+# when a new product is added, and a committed session is a leaked credential.
+.session.json
+*.session.json

@@ -1,6 +1,23 @@
-# ICM stage outputs are disposable scratch — structure kept via .gitkeep, contents ignored
+# ICM stage outputs are disposable scratch — structure kept via .gitkeep, contents ignored.
+# Note the /* rather than a bare directory: git cannot un-ignore a path inside an
+# excluded directory, so the baseline exceptions below would silently do nothing.
 stages/*/output/*
 !stages/*/output/.gitkeep
+
+# Exception — a freshness baseline is NOT scratch.
+# A Stage 01 spec whose source_provenance.source is tmt-live is the only record
+# of what the test management tool held when its tests were written. It outlives
+# the ticket that produced it, survives every cleanup scope except a full reset,
+# and is what /drift-check and the Stage 03 gate compare against. Losing one
+# disables drift detection for that service permanently, and nothing surfaces
+# the loss until drift goes undetected.
+#
+# List each baseline explicitly — git cannot tell a TMT-sourced spec from a
+# tabular one by path. Add a line when a new Path B2 baseline is created; do
+# NOT add tabular- or tracker-sourced specs, which regenerate from their source.
+# Run `node _tools/baseline-tracked.mjs <baseline folder> --add` rather than
+# editing this block by hand; new entries are appended directly below.
+# --- source-freshness baselines (maintained by _tools/baseline-tracked.mjs) ---
 
 # Secrets — never commit
 .env
@@ -15,6 +32,10 @@ test-results/
 blob-report/
 .cache/
 
+# Claude Code — machine-specific permissions only.
+# .claude/commands/ is shared and must stay committable.
+.claude/settings.local.json
+
 # OS / editor
 .DS_Store
 Thumbs.db
@@ -25,3 +46,9 @@ Thumbs.db
 playwright/**/test-results/
 playwright/**/playwright-report/
 playwright/**/auth/*session*
+
+# _archive/ is deliberately TRACKED and must stay that way.
+# Stage outputs above are ignored because they regenerate; _archive/ holds
+# snapshots of artifacts that cannot be regenerated — human approval decisions,
+# promotion records, and test-run evidence. Never add an ignore rule that
+# swallows it, and never widen one until it does.

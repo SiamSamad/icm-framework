@@ -8,11 +8,13 @@ ICM is a staged, auditable pipeline that converts tickets into executable Playwr
 
 ## Products in Scope
 
-One row per product config. Add a row (and a `_config/<key>.md` + `playwright/<key>/` bucket) for each app you test.
+One row per product config. Add a row (and a `_config/<key>.md` + `playwright/web/<key>/` bucket) for each app you test.
 
-| Key | Product | Playwright Suite | Routing |
-|-----|---------|-----------------|---------|
-| `example-product` | Example app | `playwright/example-product/` | tier-based (default) or page-based — declared in its config |
+| Key | Product | Suite | Routing |
+|-----|---------|-------|---------|
+| `example-product` | Example app | `playwright/web/example-product/` | tier-based (default) or page-based — declared in its config |
+
+API services are not products: they live in the shared API runner at `playwright/api/tests/<service>/` and are selected by tag rather than by bucket. See Directory Layout below.
 
 ## Promotion Target
 
@@ -27,14 +29,18 @@ Work through stages in order. Do not skip stages. Each stage's output becomes th
 ### Stage 01 — Normalize
 
 ```
-Input:  ticket via tracker integration (default), fetched by ticket ID
-        inputs/<TICKET-ID>.md (fallback, if MCP unavailable or ticket not found)
+Mode A input:  ticket via tracker integration (default), fetched by ticket ID
+               inputs/<TICKET-ID>.md (fallback, if MCP unavailable or ticket not found)
+Mode B input:  tabular case/endpoint exports (Path B1), and/or a live TMT folder ID
+               or case key (Path B2), plus optional parent ticket and OpenAPI spec
 Prompt: stages/01-normalize/CONTEXT.md
 Output: stages/01-normalize/output/<TICKET-ID>/spec.md
         stages/01-normalize/output/<TICKET-ID>/report.html
 ```
 
-Given a ticket ID, fetch it from tracker via the tracker integration first. Only fall back to `inputs/<TICKET-ID>.md` if the MCP is unavailable or the ticket can't be found there. Read the prompt, then read the ticket. Emit the normalized spec to the output directory. The spec must be YAML-fenced and follow the schema defined in the prompt.
+**Mode A — Ticket Intake (default).** Given a ticket ID, fetch it from the tracker via the tracker integration first. Only fall back to `inputs/<TICKET-ID>.md` if the MCP is unavailable or the ticket can't be found there. Read the prompt, then read the ticket. Emit the normalized spec to the output directory. The spec must be YAML-fenced and follow the schema defined in the prompt.
+
+**Mode B — API Case Intake.** Used when the API test cases already exist — in a spreadsheet (Path B1) or in a test management tool (Path B2). Mode B parses or fetches them into one canonical `cases` inventory, plus an `api_contract` and a `coverage_matrix`. Path B2 additionally fingerprints every case for drift detection. See `_config/api-intake.md`; a folder-scoped Path B2 fetch names its output folder after the service, or `TMT-<folderId>` when the folder spans several.
 
 ### Stage 02 — Test Cases
 
@@ -44,7 +50,7 @@ Input:  stages/01-normalize/output/<TICKET-ID>/spec.md
 Prompt: stages/02-test-cases/CONTEXT.md
 Output: stages/02-test-cases/output/<TICKET-ID>/test-cases.md
         stages/02-test-cases/output/<TICKET-ID>/report.html
-        stages/02-test-cases/output/<TICKET-ID>/dev-feedback.md  (only when selector gaps exist)
+        stages/02-test-cases/output/<TICKET-ID>/dev-request.txt  (only when selector gaps exist)
 ```
 
 Generate numbered test cases. Each must include: ID, title, preconditions, steps, expected result, pass criterion, and fail criterion.
@@ -65,25 +71,27 @@ Output: stages/03-approve/output/<TICKET-ID>/approved.md  (written by human)
 Input:  stages/03-approve/output/<TICKET-ID>/approved.md
         _config/<product>.md
 Prompt: stages/04-generate-tests/CONTEXT.md
-Output: playwright/{product}/tests/{category}/<TICKET-ID>.spec.ts        (TEMPORARY scratch — promoted to promotion target in Stage 05)
-        playwright/{product}/pages/*.ts                                   (TEMPORARY scratch — promoted to promotion target in Stage 05)
+Output: playwright/web/{product}/tests/{category}/<TICKET-ID>.spec.ts        (TEMPORARY scratch — promoted to promotion target in Stage 05)
+        playwright/web/{product}/pages/*.ts                                   (TEMPORARY scratch — promoted to promotion target in Stage 05)
         stages/04-generate-tests/output/<TICKET-ID>/report.html
         stages/04-generate-tests/output/<TICKET-ID>/summary.md
         stages/04-generate-tests/output/<TICKET-ID>/failed/TC-<n>.png    (one per failing test)
         stages/04-generate-tests/output/<TICKET-ID>/previous-run/        (prior run archived here; one kept)
 ```
 
-Generate Playwright test files and run them in the local scratch runner. Tests written to `playwright/{product}/` are **temporary scratch files** — parked there only until proven green. The permanent home is the promotion target; promotion happens in Stage 05.
+Generate Playwright test files and run them in the local scratch runner. Tests written to `playwright/web/{product}/` are **temporary scratch files** — parked there only until proven green. The permanent home is the promotion target; promotion happens in Stage 05.
 
-**All-green gate:** Stage 05 may only run for a ticket whose latest Stage 04 verdict is PASSED. If `stages/04-generate-tests/output/<TICKET-ID>/report.html` shows any failures, Stage 05 is blocked for that ticket until a re-run is clean.
+**Three verdict states:** **PASSED** (every test ran and passed), **BLOCKED** (zero failures, but one or more tests skipped against a documented external blocker), and **FAILED** (one or more tests failing). BLOCKED and FAILED call for different actions by different people — BLOCKED is somebody else's dependency to deliver, FAILED is ours to fix.
+
+**All-green gate:** Stage 05 may only run for a ticket whose latest Stage 04 verdict is PASSED. BLOCKED does not promote, and there are no waivers. If `stages/04-generate-tests/output/<TICKET-ID>/report.html` shows any failures or skips, Stage 05 is blocked for that ticket until a re-run is clean.
 
 ### Stage 05 — Promote and Close
 
 ```
 Input:  stages/04-generate-tests/output/<TICKET-ID>/summary.md   (Stage 04 verdict — must be PASSED)
         stages/04-generate-tests/output/<TICKET-ID>/report.html
-        playwright/{product}/tests/{category}/<TICKET-ID>.spec.ts (parked validated tests)
-        playwright/{product}/pages/*.ts                           (parked page objects)
+        playwright/web/{product}/tests/{category}/<TICKET-ID>.spec.ts (parked validated tests)
+        playwright/web/{product}/pages/*.ts                           (parked page objects)
         _config/<product>.md
 Prompt: stages/05-results/CONTEXT.md
 Output: stages/05-results/output/<TICKET-ID>/summary.md
@@ -120,15 +128,61 @@ _config/
   selectors.md         ← selector quality standard, three-path testability strategy, data-testid naming
   report-style.md      ← HTML report conventions shared by all stages
   writing-rules.md     ← finding structure and prose standards shared by all stages
+  api-intake.md        ← Mode B: shape recognition, canonical field mapping, TMT adapter contract
+  source-freshness.md  ← content fingerprinting, drift comparison, delta report, baseline sharing
+  service-source-lookup.md ← constraint extraction from service source; the authority rule
+  auth-behavior.md     ← per-service auth header and status codes, VERIFIED/ASSUMED provenance
+  api-test-mapping.md  ← Stage 02: test definition schema, tag naming, output document structure
+  api-test-generation.md ← Stage 04: API routing, request-fixture template, env module protocol
+_tools/                ← deterministic helper scripts (Node, zero dependencies)
+  case-hash.mjs        ← per-case content fingerprints; the only hash implementation
+  baseline-tracked.mjs ← keeps freshness baselines out of .gitignore; self-fixes with --add
+.claude/
+  commands/
+    drift-check.md     ← /drift-check — read-only source-drift report for one baseline
 playwright/
-  <product>/
-    pages/             ← page object classes (generated by Stage 04)
+  web/                 ← UI runner: browser-driven tests, one project per product
+    package.json
+    playwright.config.ts
+    fixtures/
+      auth.setup.example.ts   ← template; copied per product into <product>/auth/
+    <product>/
+      auth/
+        .gitignore     ← ignores the saved session, co-located with the product
+        <product>.setup.ts    ← wired as a `dependencies:` entry in the config
+      pages/           ← page object classes (generated by Stage 04)
+      tests/
+        smoke/         ← tier-based products: critical path smoke tests
+        regression/    ← tier-based: regression guard tests
+        e2e/           ← tier-based: full end-to-end flow tests
+        <page-area>/   ← page-based products: one folder per page area (from the product config)
+  api/                 ← API runner: Playwright `request` fixture, no browser
+    package.json
+    playwright.config.ts
+    .env.example       ← names only, grouped per service (Stage 05 maintains it)
+    config/
+      required.ts      ← shared validator, written once, never modified
+      env.shared.ts    ← values with a second reader; empty until then
+      env.<service>.ts ← one per service, append-only
+      env.ts           ← barrel — the only file tests import
     tests/
-      smoke/           ← tier-based products: critical path smoke tests
-      regression/      ← tier-based: regression guard tests
-      e2e/             ← tier-based: full end-to-end flow tests
-      <page-area>/     ← page-based products: one folder per page area (from the product config)
+      <service>/       ← one folder per service; specs named for the service
+maestro/               ← mobile runner (scaffold only — see maestro/README.md)
+  flows/
+    <product>/
 ```
+
+### Buckets Are Named for Tools
+
+The top level names the **test tool**; surfaces and products nest beneath it. A test is routed by the tool that executes it — never by the ticket prefix or the team that filed it.
+
+| Bucket | Tool | Selection |
+|--------|------|-----------|
+| `playwright/web/` | Playwright (browser) | one project per product |
+| `playwright/api/` | Playwright (`request` fixture) | one project; services selected by `--grep @<service>` |
+| `maestro/` | Maestro | scaffold only; no stage wiring yet |
+
+This is the same principle the intake layer applies to test management tools: define the contract, keep the vendor swappable. A new product adds a folder inside an existing bucket; a new **tool** adds a bucket beside the others (`espresso/`, `xcuitest/`, `appium/`) without disturbing what is already there.
 
 ## Layer Architecture
 
@@ -138,8 +192,10 @@ ICM is organized in four layers. Each has a distinct role and must not be confus
 |-------|-------|------|
 | **Layer 1** — Identity & Routing | `CLAUDE.md`, `AGENTS.md` | Pipeline rules, stage routing, cleanup commands, model selection |
 | **Layer 2** — Stage Contracts | `stages/*/CONTEXT.md` | Per-stage lean contracts: what to load, what gate must pass, what to produce |
-| **Layer 3** — Shared Reference | `_config/` | Rules used by multiple stages: selector standard, report style, writing rules, product config |
+| **Layer 3** — Shared Reference | `_config/` | Rules used by multiple stages: selector standard, report style, writing rules, source freshness, product config |
 | **Layer 4** — Working Artifacts | `stages/*/output/<TICKET-ID>/` | Per-ticket outputs produced at runtime — disposable scratch |
+
+`_tools/` sits beside these rather than inside them: where a rule must produce the same answer every time it is applied — a content fingerprint, an "is this file ignored" check — the rule is written as a script and the stages call it. A value a stage could have computed by eye is a value two runs can disagree about.
 
 ### Stage Contract Skeleton
 
@@ -169,7 +225,7 @@ stages/<NN-stage-name>/output/<TICKET-ID>/
    | Stage | Files |
    |-------|-------|
    | 01 — Normalize | `spec.md`, `report.html` |
-   | 02 — Test Cases | `test-cases.md`, `report.html`, `dev-feedback.md` (only when selector gaps exist) |
+   | 02 — Test Cases | `test-cases.md`, `report.html`, `dev-request.txt` (only when selector gaps exist) |
    | 03 — Approve | `approved.md` |
    | 04 — Generate and Run Tests | `report.html`, `summary.md`; `failed/TC-<n>.png` (one per failing test); `previous-run/` (prior run archive) — never `.spec.ts` or page object files |
    | 05 — Promote and Close | `summary.md`, `report.html` |
@@ -184,16 +240,37 @@ stages/<NN-stage-name>/output/<TICKET-ID>/
 
 4. **Never dump files at the root of any `output/` folder.** If the ticket's folder does not exist yet, create it before writing the file.
 
-5. **Generated Playwright test files and page objects are never written under `stages/*/output/`.** They belong in `playwright/{product}/pages/` and `playwright/{product}/tests/{category}/` (see below). A stage's `output/<TICKET-ID>/` folder is exclusively for human-readable stage artifacts (specs, test cases, reports, approvals, summaries) — never generated code.
+5. **Generated Playwright test files and page objects are never written under `stages/*/output/`.** They belong in `playwright/web/{product}/pages/` and `playwright/web/{product}/tests/{category}/` (see below). A stage's `output/<TICKET-ID>/` folder is exclusively for human-readable stage artifacts (specs, test cases, reports, approvals, summaries) — never generated code.
 
-6. **Playwright test files go under `playwright/{product}/tests/{category}/` and page objects under `playwright/{product}/pages/`.** For tier-based products, `{category}` is one of `smoke/`, `regression/`, `e2e/`. For page-based products, `{category}` is the page area the test covers, as defined in the product config. These files are **temporary scratch** — parked here until Stage 04 proves them green, then promoted to the promotion target in Stage 05.
+6. **Playwright test files go under `playwright/web/{product}/tests/{category}/` and page objects under `playwright/web/{product}/pages/`.** For tier-based products, `{category}` is one of `smoke/`, `regression/`, `e2e/`. For page-based products, `{category}` is the page area the test covers, as defined in the product config. These files are **temporary scratch** — parked here until Stage 04 proves them green, then promoted to the promotion target in Stage 05.
 
    ```
-   playwright/example-product/tests/e2e/PROJ-1234.spec.ts
-   playwright/example-product/pages/ConfirmPage.ts
-   playwright/other-product/tests/checkout/PROJ-2345.spec.ts
-   playwright/other-product/pages/DetailPage.ts
+   playwright/web/example-product/tests/e2e/PROJ-1234.spec.ts
+   playwright/web/example-product/pages/ConfirmPage.ts
+   playwright/web/other-product/tests/checkout/PROJ-2345.spec.ts
+   playwright/web/other-product/pages/DetailPage.ts
    ```
+
+---
+
+## Source Freshness and Drift Detection
+
+When cases are fetched live from an external test management tool (TMT), that tool keeps moving after the fetch — cases are edited, added, and removed while the ticket is still in the pipeline. A spec taken on Monday can describe a case set that no longer exists on Thursday.
+
+The framework treats the TMT as **pluggable**: it defines the intake contract (fetch by folder or case key, explicit field lists, pagination to completion, canonical field mapping, content fingerprinting) and any vendor (e.g., TestRail, Zephyr, QMetry, Xray) sits behind it as an adapter. Freshness rules are written against the canonical case shape, never a vendor payload.
+
+Stage 01 fingerprints each case it fetched with `_tools/case-hash.mjs` and records the hashes in the spec's `source_provenance`. Every later check re-fetches the same scope, recomputes, and compares. Full rules — what is hashed, the canonical form, the delta report wording — live in `_config/source-freshness.md`.
+
+| Consumer | Behaviour on drift |
+|----------|--------------------|
+| Stage 01 (Mode B / Path B2) | Records the fingerprints — does not compare |
+| Stage 03 | **Hard block.** Cases are not presented, `approved.md` is not written, no override exists |
+| `/drift-check` | Reports the delta only — read-only, changes nothing |
+| Stage 05 | Removal check — requires confirmation before pushing a net test loss |
+
+**Only live-TMT specs are in scope.** A spec whose `source_provenance.source` is not `tmt-live` — every Mode A tracker intake, every tabular export — is exempt, silently. That is not a gap and never a warning.
+
+**Baselines are shared, not local.** A Stage 01 spec sourced from the TMT is the only record of what that tool held when the tests were written, so it must be committed. `.gitignore` ignores stage output wholesale and re-includes each baseline by name; Stage 01 verifies this with `_tools/baseline-tracked.mjs` and fixes it with `--add` rather than asking anyone to hand-edit ignore rules.
 
 ---
 
@@ -205,8 +282,9 @@ stages/<NN-stage-name>/output/<TICKET-ID>/
 4. **Do not overwrite existing output files** — create versioned copies (e.g. `spec-v2.md`) inside the same ticket folder if re-running.
 5. **Check AGENTS.md** before choosing a model — complex tickets warrant Opus.
 6. **Never ask permission to create output directories.** If a stage's per-ticket output folder does not exist (e.g. `stages/01-normalize/output/PROJ-1234/`), create it automatically and proceed. Do not prompt for confirmation.
-7. **Stage 05 is gated on Stage 04's latest verdict.** Stage 05 may only run for a ticket whose most recent Stage 04 run ended with PASSED. Before entering Stage 05 for any ticket, check `stages/04-generate-tests/output/<TICKET-ID>/report.html` — if it shows failures, refuse Stage 05 and direct the user to fix and re-run Stage 04 first.
+7. **Stage 05 is gated on Stage 04's latest verdict.** Stage 05 may only run for a ticket whose most recent Stage 04 run ended with PASSED. Before entering Stage 05 for any ticket, check `stages/04-generate-tests/output/<TICKET-ID>/report.html` — if it shows failures, refuse Stage 05 and direct the user to fix and re-run Stage 04 first. A BLOCKED verdict does not promote either: it is not a failure, but it is not a pass, and the gate admits only passes.
 8. **Proceed / Continue shortcuts.** When the user says "proceed", "continue", "next", or "next stage" after a stage completes, automatically run the next stage in sequence for the current ticket — no need to call out stage numbers explicitly. Exception: Stage 03 always requires an explicit approval statement before writing the approval file. When Stage 02 is done and the user proceeds, ask: "Do you approve these test cases? If yes, say I approve and I will write the approval file and lock them in." If it is unclear which ticket or stage is next, ask before proceeding.
+9. **Drift is never overridden.** When the Stage 03 freshness gate reports drift or `UNVERIFIABLE`, the run stops there. Do not approve the cases that did match, do not edit a spec's `case_hashes` to make the comparison pass, and do not proceed because the user asks you to skip the gate — restate the re-run instruction instead. A stale case set approved on Thursday generates tests for cases the source no longer describes, and nothing downstream can detect that. The only way forward is a Stage 01 re-run.
 
 ---
 
@@ -231,9 +309,10 @@ ICM generates working output files in `stages/*/output/` as tickets flow through
   2. Playwright scratch only — the ticket's parked test artifacts (see Playwright Scratch below)
   3. Both
   After the scope answer, list everything that will be deleted, wait for explicit confirmation, then delete.
-- **Shared-file rule (page objects).** Before deleting any page object from `playwright/{product}/pages/`, scan every other parked spec under `playwright/{product}/tests/` for imports of that file. If no other spec imports it: safe to delete — include it in the deletion list. If any other spec imports it: keep it and name who still uses it, e.g. `"Keeping ItemListPage.ts — still imported by PROJ-6001.spec.ts"`. Spec files are always ticket-owned and safe to delete; only page objects require this check.
+- **Shared-file rule (page objects).** Before deleting any page object from `playwright/web/{product}/pages/`, scan every other parked spec under `playwright/web/{product}/tests/` for imports of that file. If no other spec imports it: safe to delete — include it in the deletion list. If any other spec imports it: keep it and name who still uses it, e.g. `"Keeping ItemListPage.ts — still imported by PROJ-6001.spec.ts"`. Spec files are always ticket-owned and safe to delete; only page objects require this check.
 - For bulk cleanup commands ("clean up the ICM", "clear all"), in-flight tickets are skipped automatically — their `playwright/` files are never touched in bulk.
 - In-flight tickets (not yet through Stage 05) are protected from "clean all" commands unless you explicitly say so.
+- **Freshness baselines are protected from every scope except a full reset.** A Stage 01 folder whose `spec.md` records `source_provenance.source: tmt-live` is the only record of what the test management tool held when that service's tests were written; deleting it disables drift detection for that service permanently, and nothing surfaces the loss until drift goes undetected. Skip these folders — but **never silently**: name each one skipped and why, e.g. `"Keeping stages/01-normalize/output/Order-Service/ — freshness baseline (tmt-live, 12 cases, fetched 2026-08-05)"`. **Graduation does not release a baseline.** A promoted service never re-enters Stage 03, so its baseline outlives the ticket that produced it and is the only thing `/drift-check` can compare against.
 
 ---
 
@@ -241,8 +320,8 @@ ICM generates working output files in `stages/*/output/` as tickets flow through
 
 When scope includes Playwright scratch (scope 2 or 3), the candidates for deletion for the given ticket are:
 
-- Spec file(s): `playwright/<product>/tests/**/<TICKET-ID>.spec.ts` (including `_unsorted/` if applicable)
-- Local test-results artifacts: any folder under `playwright/<product>/test-results/` whose name contains `<TICKET-ID>`, if present
+- Spec file(s): `playwright/web/<product>/tests/**/<TICKET-ID>.spec.ts` (including `_unsorted/` if applicable)
+- Local test-results artifacts: any folder under `playwright/web/<product>/test-results/` whose name contains `<TICKET-ID>`, if present
 - Page objects imported by the ticket's spec — **subject to the Shared-File Rule above**
 
 ---
@@ -251,7 +330,7 @@ When scope includes Playwright scratch (scope 2 or 3), the candidates for deleti
 
 **Single ticket, single stage**
 "Clean up PROJ-2345 from Stage 02"
-→ Removes the whole folder `stages/02-test-cases/output/PROJ-2345/` (and everything inside it — `test-cases.md`, `report.html`, `dev-feedback.md` if present).
+→ Removes the whole folder `stages/02-test-cases/output/PROJ-2345/` (and everything inside it — `test-cases.md`, `report.html`, `dev-request.txt` if present).
 → No scope question — the stage-only target is already explicit.
 
 **Single ticket (all stages and/or Playwright scratch)**
@@ -267,9 +346,9 @@ Example listing (scope: Both):
 > - `stages/04-generate-tests/output/PROJ-1234/`
 >
 > **Playwright scratch to delete:**
-> - `playwright/example-product/tests/checkout/PROJ-1234.spec.ts`
-> - `playwright/example-product/pages/ItemViewPage.ts` *(not imported by any other parked spec)*
-> - `playwright/example-product/pages/AuditTabPage.ts` *(not imported by any other parked spec)*
+> - `playwright/web/example-product/tests/checkout/PROJ-1234.spec.ts`
+> - `playwright/web/example-product/pages/ItemViewPage.ts` *(not imported by any other parked spec)*
+> - `playwright/web/example-product/pages/AuditTabPage.ts` *(not imported by any other parked spec)*
 >
 > **Keeping (shared page objects):**
 > - Keeping `ItemListPage.ts` — still imported by `PROJ-6001.spec.ts`
@@ -289,7 +368,41 @@ Example listing (scope: Both):
 "Clean up the ICM — including in-progress tickets"
 → Same as "clean up the ICM" but also removes ticket output folders for tickets still mid-pipeline.
 → Requires this exact phrasing — a vague "clear all" will NOT touch in-flight tickets.
+→ Freshness baselines are still kept. Only a full reset destroys those.
 → List all folders first, wait for confirmation before deleting.
+
+**Full reset (destroys baselines)**
+"Full reset — including freshness baselines"
+→ The only scope that deletes live-TMT Stage 01 baselines. Requires this exact phrasing.
+→ List baselines under their own heading, separate from ordinary scratch, so the reviewer sees exactly what is unrecoverable:
+> **Baselines to be destroyed (drift detection will be lost for these services):**
+> - `stages/01-normalize/output/Order-Service/` — tmt-live, folder TMT-4102, 12 cases, fetched 2026-08-05
+→ State plainly that the only way back is a Stage 01 re-run, and that any drift occurring between now and that re-run becomes undetectable. Wait for confirmation before deleting.
+→ After a full reset, remove the corresponding negation lines from the baseline block in `.gitignore`.
+
+---
+
+### The `_archive/` Convention
+
+Stage outputs are ignored by git because they regenerate: re-run the stage and you get them back. Three things in this pipeline do **not** regenerate, and they are exactly the things worth keeping:
+
+- **Approval decisions** — what a reviewer approved, when, and what they changed.
+- **Promotion records** — what was promoted, to which branch, under which MR.
+- **Run evidence** — the report and screenshots from the run that justified a promotion.
+
+Re-running a stage produces a *new* one of each. It cannot reproduce the old one, because the inputs have moved on.
+
+So when a ticket's outputs are worth preserving past cleanup — an audit, a postmortem, a rebuild of the pipeline itself — copy them into a dated snapshot folder before deleting:
+
+```
+_archive/2026-08-15-<short-reason>/
+  <TICKET-ID>/
+    approved.md
+    summary.md
+    report.html
+```
+
+`_archive/` is **deliberately tracked in git** and must stay that way. Never add an ignore rule that swallows it, and never widen an existing rule (`output/`, `*.html`, `reports/`) in a way that catches it by accident. Archiving is always explicit — no stage writes here on its own, and cleanup never creates a snapshot without being asked.
 
 ---
 
@@ -300,3 +413,5 @@ A ticket's output files are considered "graduated" (safe to clean) when:
 - I have confirmed the MR merged.
 
 Until both are confirmed, the ticket is in-flight and protected from bulk cleanup commands. For graduated tickets, the scope question still applies — the user chooses stage outputs only, Playwright scratch only, or both. Playwright scratch deletion follows the Shared-File Rule above: spec files are always safe to delete; page objects are only deleted when no other parked spec imports them.
+
+Graduation is about the *ticket*, not the *baseline*. A graduated ticket releases its Stage 02–05 scratch; a live-TMT Stage 01 baseline is released only by a full reset, because the service it describes still needs to be drift-checkable after promotion.

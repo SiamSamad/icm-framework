@@ -51,7 +51,7 @@ inputs/TICKET.md  (or ticket fetched via tracker integration)
   → stages/01-normalize/output/<TICKET-ID>/spec.md
   → stages/02-test-cases/output/<TICKET-ID>/test-cases.md
   → stages/03-approve/output/<TICKET-ID>/approved.md   [human gate]
-  → playwright/<product>/… (scratch) + stages/04-generate-tests/output/<TICKET-ID>/ (run report)
+  → playwright/web/<product>/… (scratch) + stages/04-generate-tests/output/<TICKET-ID>/ (run report)
   → stages/05-results/output/<TICKET-ID>/summary.md    [promotion, human gates]
 ```
 

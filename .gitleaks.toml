@@ -1,0 +1,27 @@
+# gitleaks configuration for the ICM framework.
+#
+# Extends the default ruleset rather than replacing it — the defaults cover the
+# provider key formats worth catching, and a hand-rolled ruleset would silently
+# cover fewer.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Template and documentation placeholders — names and shapes, never values."
+
+paths = [
+  # Names-only templates. A value here is a mistake, but the file is full of
+  # KEY= lines that pattern-match as assignments.
+  '''\.env\.example$''',
+  # Reference modules quote header names, placeholder keys, and example payloads.
+  '''^_config/.*\.md$''',
+  # Stage contracts embed code templates with placeholder credentials.
+  '''^stages/.*/CONTEXT\.md$''',
+]
+
+regexes = [
+  # Explicit placeholder forms used throughout the framework docs.
+  '''<service-default-key>''',
+  '''PLACEHOLDER''',
+  '''\$\{[A-Z_]+\}''',
+]

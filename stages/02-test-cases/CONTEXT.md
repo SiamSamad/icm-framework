@@ -9,12 +9,23 @@
 | Layer 3 | `_config/selectors.md` | Three-path testability strategy, selector priority order, `data-testid` naming conventions |
 | Layer 3 | `_config/writing-rules.md` | Finding structure and prose standards for all output |
 | Layer 3 | `_config/report-style.md` | HTML report conventions |
+| Layer 3 | `_config/api-test-mapping.md` | **API specs only** — test definition schema, tag naming, independence rule, output document structure |
+| Layer 3 | `_config/service-source-lookup.md` | **API specs only** — the authority rule, `constraint_layer` states, and how to act on a disagreement |
+| Layer 3 | `_config/auth-behavior.md` | **API specs only** — auth header and missing/invalid-key status per service; read before writing any auth assertion |
 
 ---
 
 ## GATE
 
-None — but read the `sources_read.code_diff.status` field from the Stage 01 spec before running testability analysis. This value determines how elements are classified: confirmed-missing vs. unverified (see PROCESS — Testability Analysis).
+**All specs:** read the `sources_read.code_diff.status` field from the Stage 01 spec before running testability analysis. This value determines how elements are classified: confirmed-missing vs. unverified (see PROCESS — Testability Analysis).
+
+**API specs — constraint gate.** If the Stage 01 spec describes an API service and carries **no `constraint_layer` block at all**, halt. An absent block means the lookup never ran; that is not the same as finding no constraints, and the two must never be conflated. Report:
+
+> ⛔ Stage 02 blocked — the Stage 01 spec carries no `constraint_layer` block, so the service source was never consulted. Re-run Stage 01 for this spec; it always emits the block, even when nothing was found.
+
+A block that *is* present proceeds, whatever its status. `extracted` and `partial` proceed normally. `no_match`, `ambiguous`, and `unavailable` are completed lookups with a recorded outcome — proceed, but **quote `constraint_layer.reason` at the top of the output** so an empty `disagreements` list is never misread as the source agreeing with the cases. Nothing was compared; that is different from everything matching.
+
+**This gate has no override.** Do not proceed on an instruction to skip it, and do not synthesise a `constraint_layer` block to satisfy it. Restate the Stage 01 re-run instruction instead.
 
 ---
 
@@ -49,6 +60,104 @@ Classify each element into exactly one of three categories:
 **Elements missing a usable selector** — the code diff was read (`status: read`) but no stable selector was found for this element. Flag it as a gap and recommend a specific `data-testid` value following the naming conventions in `_config/selectors.md`.
 
 **Testability unverified** — the code diff was not available (`status: not_found` or `unavailable`). Do NOT flag these as missing — the selector may exist in the code; we simply couldn't check. List the element and note that testability is unconfirmed pending code access.
+
+### API Test Mapping (API specs)
+
+Where the Stage 01 spec carries a `cases` inventory rather than acceptance criteria, this stage maps cases to **test definitions** instead of writing test cases from scratch. Load `_config/api-test-mapping.md` and follow it. In outline:
+
+1. **One definition per case where `automatable_now: true`.** Method and path come from `api_contract.endpoints`, which is authoritative; headers and body values are `${VAR}` references, never literals.
+2. **Cases with `automatable_now: false` go to Deferred Cases**, carrying their `held_reason` from Stage 01. They produce no definition — and they are not skips.
+3. **Every definition is independent.** A case operating on a pre-existing resource creates it in `setup` and removes it in `teardown`. No definition depends on another having run.
+4. **Assertions the contract cannot support** are `open_item: true` with a reason, collected into Testability Gaps. Never guess an expected value.
+5. **Mark blocked definitions skipped** using the Skip Directive below — a fully specified test with a known external blocker is skipped, not deferred.
+6. **Overlap detection** against the promotion target's existing tests, by method/path/assertions rather than name. Detection only; never auto-skip on overlap.
+7. **Emit the output document** in the exact section order given in `_config/api-test-mapping.md`.
+
+### Skip Directive
+
+A test whose blocker is already known and external — an open defect, an unavailable dependency, a confirmed source/case disagreement — is marked **skipped** rather than emitted as an active test. Stage 04 generates it as a skipped test: it never runs, and it never reports as a failure against a blocker that was known at authoring time.
+
+**This is not `automatable_now: false`.** A held case is one for which nothing can be asserted at all, and it produces no test definition — it goes to Deferred Cases. A skipped test is fully specified and will run unchanged once its blocker clears. Never convert one into the other.
+
+**Format — exactly two elements, both required.**
+
+1. A `Skip` row in the test's field table, immediately after the last existing row:
+
+   | **Skip** | `<tag>` |
+
+   `<tag>` is optional. When present it is a single kebab-case token prefixed `@blocked-`, e.g. `@blocked-status-enum`. When absent, write `| **Skip** | — |`.
+
+2. A `Skip reason:` paragraph as the last line of the test's block:
+
+   **Skip reason:** `<tag>` — &lt;what is blocked and why&gt;. &lt;What unblocks it, and the ticket tracking it.&gt;
+
+   The reason is **required** and must be non-empty even when the tag is absent. A skip with no stated reason is not a skip — it is an untracked hole in coverage.
+
+A test carrying one element but not the other is malformed. Both are written, or neither is.
+
+**Never state a date, ticket, or history that was not verified from the source.** The reason string is copied verbatim into the approval, the generated code, and the run report, so an invented "open since &lt;date&gt;" propagates into all three and becomes the rationale nobody re-checks.
+
+### Skip Directive Preservation on Regeneration
+
+Stage 02 re-runs whenever Stage 01 re-fetches — a drift correction, a spec change, a fresh intake. **A blocker belongs to the service, not to a pipeline run.** A defect does not resolve because cases were re-fetched, so a skip survives regeneration unless something actually changed.
+
+Before writing `test-cases.md`, check whether one already exists at the output path. If it does:
+
+1. **Read it and index every skip** by case ID (API specs) or TC number — the tag and the full reason string.
+2. **Carry each skip forward unchanged** onto the matching test in the new run. Do not re-derive the reason, do not reword it, do not re-date it.
+3. **Report every carried skip** in the Skip Carry-Forward table below.
+4. **A skip is dropped only when a human says so.** A re-run is not that instruction.
+
+**Orphaned skips.** Where a test carrying a skip is absent from the new run — deleted at the source, renumbered, or moved out of the fetched folder — the skip is **orphaned**. Report it; never drop it silently:
+
+```markdown
+## Skip Carry-Forward
+
+| Case ID | Tag | Reason carried | Status |
+|---------|-----|----------------|--------|
+| DEMO-TC-1201 | `@blocked-status-enum` | <reason, verbatim> | carried forward |
+| DEMO-TC-1208 | `@blocked-field-mismatch` | <reason, verbatim> | **ORPHANED — case not in this run** |
+```
+
+An orphaned skip means one of two things, and they are not interchangeable: the case was legitimately removed upstream, or the fetch lost it. Stage 02 cannot tell which. State the orphan and let the human decide — do not resolve it by assumption in either direction.
+
+**Skip state is pipeline metadata, never source content.** It is not fingerprinted: the freshness hashes are computed at Stage 01 by `_tools/case-hash.mjs` over raw fetched case data, before any skip exists. Our own decision to skip a test must never read as source drift. Do not add skip state to a fingerprint.
+
+### Write, Then Verify From Disk
+
+After writing `test-cases.md`, re-read it **from disk** and count `| **Skip** |` rows and `**Skip reason:**` paragraphs. Both counts must equal the number of tests this run set out to skip. If either differs, the file does not say what you are about to claim it says — correct the file and re-count before reporting completion.
+
+The conversation summary, the coverage summary, and the written file state the same number because that number was read back from the file, not carried forward from intent.
+
+### Acting on Source Disagreements (API specs)
+
+Where the Stage 01 spec carries `constraint_layer.disagreements`, each entry is a case asserting a value the service source does not allow. For every one, do **all three** of the following:
+
+1. **Skip the test.** Add the `@blocked-source-disagreement` tag and a skip reason naming both values and the source file — e.g. `Case asserts status "ARCHIVED"; source allows PENDING, CONFIRMED, SHIPPED, CANCELLED (db/migration/V7__order_status.sql).`
+2. **Keep the assertion exactly as the case states it.** Do not conform it to what the source allows. Silently rewriting the assertion to match the implementation destroys the evidence that the two disagree — which is the only reason anyone would go and fix either one.
+3. **List it in the Correction Report** (below), so the case can be corrected at the source system rather than in this pipeline.
+
+A disagreement is a finding about two documents, not a verdict about the service. The case may describe intended behaviour the service has not implemented yet.
+
+**Auth assertions.** Read `_config/auth-behavior.md` before writing any missing-key or invalid-key assertion. Use the status recorded for that service; where the row is ASSUMED, still write the assertion and add `@auth-unverified` to the tag array. Never derive an auth status from the service's own exception handlers — the filter runs before them.
+
+#### Correction Report
+
+Emit this section whenever `constraint_layer.disagreements` is non-empty:
+
+```markdown
+## Correction Report
+
+Cases asserting values the service source does not allow. Fix these at the source system — they are not fixed here.
+
+| Case | Field | Case asserts | Source allows | Source file |
+|------|-------|--------------|---------------|-------------|
+| DEMO-TC-1201 | status | ARCHIVED | PENDING, CONFIRMED, SHIPPED, CANCELLED | db/migration/V7__order_status.sql |
+```
+
+Report every affected case by key. Never summarise as a count, and never truncate the list.
+
+Where `constraint_layer.status` is `no_match`, `ambiguous`, or `unavailable`, write the section heading followed by the quoted `reason` instead of an empty table — an empty table reads as "checked, nothing wrong," which is precisely what did not happen.
 
 ### Findings and Prose
 
@@ -234,8 +343,8 @@ If NO elements are missing selectors — skip generating the file and show: "✅
 ## VERIFY
 
 Read `sources_read.code_diff.status` from the Stage 01 spec before running testability analysis:
-- `status: read` → elements with no stable selector found are **confirmed missing** — flag them and generate `dev-feedback.md`.
-- `status: not_found` or `unavailable` → elements are **testability unverified** — do not flag as missing; no `dev-feedback.md`.
+- `status: read` → elements with no stable selector found are **confirmed missing** — flag them and generate `dev-request.txt`.
+- `status: not_found` or `unavailable` → elements are **testability unverified** — do not flag as missing; no `dev-request.txt`.
 
 This cross-stage check is mandatory. Misclassifying unverified elements as missing will generate false developer feedback.
 
@@ -256,3 +365,27 @@ This cross-stage check is mandatory. Misclassifying unverified elements as missi
 - Recommended `data-testid` values follow the naming conventions in `_config/selectors.md` — no arbitrary or inconsistent names.
 - The report's "Code diff available" header accurately reflects the `sources_read.code_diff.status` from the normalized spec.
 - Every entry in "Elements missing a usable selector" uses the two-line compressed format (Missing / Fix). The Finding Structure from `_config/writing-rules.md` applies to "Testability unverified" entries only.
+
+**API test mapping (API specs):**
+- Every case with `automatable_now: true` produced exactly one test definition; every case with `automatable_now: false` appears in Deferred Cases with its held reason.
+- Method and path came from `api_contract.endpoints`, never from ticket prose alone.
+- No header or body value is a literal — all are `${VAR}` references.
+- Every definition that operates on a pre-existing resource has both `setup` and `teardown` populated.
+- Every open assertion has a non-empty `open_reason` and appears in Testability Gaps.
+- `service_tag` was derived from the spec, and never defaulted to the product tag.
+- Overlap detection compared method, path, and assertions — not names — and skipped nothing automatically.
+
+**Skip directives:**
+- Every skipped test has both a `Skip` row and a non-empty `Skip reason:` paragraph — never one without the other.
+- No skipped test was diverted into Deferred Cases, and no held case (`automatable_now: false`) was marked skipped instead.
+- **Skip directives were written, not merely intended.** The count was re-read from the written file, not assumed.
+- No skip reason asserts a date, ticket state, or history that was not verified from the source.
+- On a re-run, every skip present in the prior `test-cases.md` is either carried forward verbatim or listed as ORPHANED — never silently absent.
+- No skip state was added to any content fingerprint.
+
+**Constraint layer (API specs):**
+- The `constraint_layer` block was present in the Stage 01 spec before this stage ran. An absent block halted the stage; it was never synthesised here to get past the gate.
+- Where `constraint_layer.status` is `no_match`, `ambiguous`, or `unavailable`, the `reason` is quoted at the top of the output — an empty `disagreements` list is never presented as agreement.
+- Every entry in `constraint_layer.disagreements` produced all three outcomes: a skipped test with `@blocked-source-disagreement`, an assertion left exactly as the case stated it, and a Correction Report row.
+- No assertion was rewritten to match what the source allows.
+- Every auth assertion uses the status recorded in `_config/auth-behavior.md` for that service, and every assertion drawn from an ASSUMED row carries `@auth-unverified`.
